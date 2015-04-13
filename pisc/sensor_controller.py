@@ -2,6 +2,9 @@
 
 class SensorController:
     
+    def __init__(self, sensors):
+        self.sensors = sensors
+    
     def set_time(self, time):
         print 'Time is {0}.'.format(time)
         

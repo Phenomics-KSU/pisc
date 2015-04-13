@@ -1,0 +1,4 @@
+version, 0.0
+
+# Type,  Name, Type Dependent Settings 
+cropcircle, cc_ac000262, \ttyS0, 76800  
