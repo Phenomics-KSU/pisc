@@ -10,4 +10,9 @@ class SensorController:
         
     def set_position(self, x, y, z):
         print 'Position is {0}.'.format((x, y, z))
+        
+    def start_sensors(self):
+        
+        print 'Starting sensors'
+        
 

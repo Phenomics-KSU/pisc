@@ -16,6 +16,15 @@ if __name__ == "__main__":
     
     print '\nPISC Version {0}'.format(current_pisc_version)
     
+    # TEMPORARY, just for testing cropcircle sensor.  
+    #from sensors.cropcircle import CropCircle
+    #cc = CropCircle('cc1', 0, "COM23", '76800')
+    #print "opening crop circle"
+    #cc.open()
+    #print "starting crop circle"
+    #cc.start()
+    #sys.exit(100)
+    
     # Define necessary and optional command line arguments.
     parser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
     parser.add_argument('config_file', help='path to sensor configuration file')
