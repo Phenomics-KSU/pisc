@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+"""
+Sensor Name:    CropCircle ACS-470
+Manufacturer:   Holland Scientific
+Sensor Type:    NVDI
+"""
+
+# TODO: This class is untested and has not been used yet.
+
 import serial
 
 class CropCircle:

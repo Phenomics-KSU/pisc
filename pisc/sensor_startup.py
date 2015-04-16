@@ -4,6 +4,7 @@ import sys
 import os
 import argparse
 import socket
+import serial
 from sensor_control_server import SensorControlServer
 from sensor_controller import SensorController
 from config_parsing import parse_config_file
@@ -16,15 +17,25 @@ if __name__ == "__main__":
     
     print '\nPISC Version {0}'.format(current_pisc_version)
     
-    # TEMPORARY, just for testing cropcircle sensor.  
-    #from sensors.cropcircle import CropCircle
-    #cc = CropCircle('cc1', 0, "COM23", '76800')
-    #print "opening crop circle"
-    #cc.open()
-    #print "starting crop circle"
-    #cc.start()
-    #sys.exit(100)
+    # TEMPORARY, just for testing IRT sensor.  
+    '''
+    from sensors.irt_ue import IRT_UE
     
+    irt_ue = IRT_UE('irt_ue', 0, "COM24", '115200', sample_rate=10)
+    
+    print "opening IRT"
+    try:    
+        irt_ue.open()
+    except serial.serialutil.SerialException, e:
+        print 'Failed to open sensor'
+        print e
+        sys.exit(100)
+        
+    print "starting IRT"
+    irt_ue.start()
+
+    sys.exit(100)
+    '''
     # Define necessary and optional command line arguments.
     parser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
     parser.add_argument('config_file', help='path to sensor configuration file')
