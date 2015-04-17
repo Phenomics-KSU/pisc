@@ -71,6 +71,7 @@ if __name__ == "__main__":
     try:
         server.activate()
     except KeyboardInterrupt:
+        # TODO terminate all sensors
         print "\nKeyboard interrupt detected"
     
     print 'Server shutting down...'

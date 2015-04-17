@@ -13,10 +13,10 @@ import struct
 class IRT_UE:
     '''Request and handle data from ThermoMETER-CT IRT sensor.'''
     
-    def __init__(self, name, id, port, baud, sample_rate):
+    def __init__(self, name, sensor_id, port, baud, sample_rate):
         '''Save properties for opening serial port later.'''
         self.name = name
-        self.id = id
+        self.id = sensor_id
         self.port = port
         self.baud = baud
         self.sample_period = 1.0 / sample_rate

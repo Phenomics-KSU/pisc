@@ -12,9 +12,9 @@ import serial
 
 class CropCircle:
     
-    def __init__(self, name, id, port, baud):
+    def __init__(self, name, sensor_id, port, baud):
         self.name = name
-        self.id = id
+        self.id = sensor_id
         self.port = port
         self.baud = baud
         
