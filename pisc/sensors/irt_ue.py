@@ -40,6 +40,8 @@ class IRT_UE:
         
         # How many bytes to read each time sensor sends data.
         bytes_to_read = 2
+        
+        self.connection.flushInput()
                 
         while True:
             
