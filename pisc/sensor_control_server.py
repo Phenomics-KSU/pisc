@@ -14,7 +14,7 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
         #socket = self.request[1]
         if self.controller is None:
             print 'handler subclass not created correctly' 
-            return;
+            return
         
         fields = data.split(',')
         
