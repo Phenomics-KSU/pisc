@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 
+import threading
+
+from serial.serialutil import SerialException
+
 class SensorController:
     
     def __init__(self, sensors):
         self.sensors = sensors
+        self.threads = []
     
     def set_time(self, time):
         print 'Time is {0}.'.format(time)
@@ -11,8 +16,33 @@ class SensorController:
     def set_position(self, x, y, z):
         print 'Position is {0}.'.format((x, y, z))
         
-    def start_sensors(self):
+    def startup_sensors(self):
+        '''Open each sensor interface and create a new thread to start reading data.'''
+                
+        print 'Starting up sensors:'
+                
+        for sensor in self.sensors:
+            print 'ID: {2}  Type: {0}  Name: {1}'.format(sensor.get_type(), sensor.get_name(), sensor.get_id())
+            
+            try:    
+                sensor.open()
+            except SerialException, e:
+                print 'ERROR: Failed to open sensor\n{0}'.format(e)
+                continue
+                        
+            # Now that sensor is open we can start a new thread to read data.
+            # We want it to be a daemon thread so it doesn't keep the process from closing.
+            t = threading.Thread(target=sensor.start)
+            t.setDaemon(True)
+            self.threads.append(t)
+            t.start()
+            
+    def close_sensors(self):
+        '''Close all sensors.'''
         
-        print 'Starting sensors'
+        for sensor in self.sensors:
+            sensor.stop()
+            sensor.close()
+                       
         
 

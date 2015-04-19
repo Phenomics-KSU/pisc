@@ -11,7 +11,6 @@ from sensor_control_server import SensorControlServer
 from sensor_controller import SensorController
 from config_parsing import parse_config_file
 from sensor_creation import create_sensors
-from data_handlers.csv_log import CSVLog
 
 current_pisc_version = '0.0'
 current_config_version = '0.0'
@@ -19,27 +18,6 @@ current_config_version = '0.0'
 if __name__ == "__main__":
     
     print '\nPISC Version {0}'.format(current_pisc_version)
-    
-    # TEMPORARY, just for testing IRT sensor.  
-    
-    from sensors.irt_ue import IRT_UE
-    
-    csv_log = CSVLog(time.strftime("%Y%m%d-%H%M%S"), 0)
-    
-    irt_ue = IRT_UE('irt_ue', 0, "COM24", '115200', sample_rate=10, data_handlers=[csv_log])
-    
-    print "opening IRT"
-    try:    
-        irt_ue.open()
-    except serial.serialutil.SerialException, e:
-        print 'Failed to open sensor'
-        print e
-        sys.exit(100)
-       
-    print "starting IRT"
-    irt_ue.start()
-
-    sys.exit(100)
     
     # Define necessary and optional command line arguments.
     parser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
@@ -64,7 +42,12 @@ if __name__ == "__main__":
     
     sensors = create_sensors(sensor_info)
     
+    print 'Created {0} sensors.'.format(len(sensors))
+    
     sensor_controller = SensorController(sensors)
+
+    # Start each sensor reading on its own thread.
+    sensor_controller.startup_sensors()
 
     host = socket.gethostname()
     port = 5000
@@ -76,8 +59,10 @@ if __name__ == "__main__":
     try:
         server.activate()
     except KeyboardInterrupt:
-        # TODO terminate all sensors
         print "\nKeyboard interrupt detected"
-    
+        print "Closing all sensors"        
+        sensor_controller.close_sensors()
+        # TODO terminate all data handlers
+            
     print 'Server shutting down...'
     

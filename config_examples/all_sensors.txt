@@ -1,4 +1,4 @@
 version, 0.0
 
 # Type,  Name, Type Dependent Settings 
-cropcircle, cc_ac000262, /dev/ttyUSB1, 76800  
+irt_ue, irt_ue_4800101, COM24, 115200, 10  

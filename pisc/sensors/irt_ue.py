@@ -23,7 +23,7 @@ class IRT_UE(Sensor):
         self.baud = baud
         self.sample_period = 1.0 / sample_rate
         
-        self.stop = False # If true then sensor will stop reading data.
+        self.stop_reading = False # If true then sensor will stop reading data.
         
     def open(self):
         '''Open serial port.'''
@@ -37,7 +37,8 @@ class IRT_UE(Sensor):
         
     def close(self):
         '''Close serial port.'''
-        self.connection.close()
+        if self.connection is not None:
+            self.connection.close()
         
     def start(self):
         '''Enter infinite loop constantly reading data.'''
@@ -48,7 +49,7 @@ class IRT_UE(Sensor):
                 
         while True:
             
-            if self.stop:
+            if self.stop_reading:
                 # Don't want to take sensor readings right now.
                 time.sleep(0.1);
                 continue
@@ -79,8 +80,8 @@ class IRT_UE(Sensor):
             
     def stop(self):
         '''Set flag to temporarily stop reading data. Thread safe.'''
-        self.stop = True
+        self.stop_reading = True
         
     def resume(self):
         '''Set flag to resume reading sensor data. Thread safe.'''
-        self.stop = False
+        self.stop_reading = False
