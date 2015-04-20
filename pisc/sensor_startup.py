@@ -11,6 +11,7 @@ from sensor_control_server import SensorControlServer
 from sensor_controller import SensorController
 from config_parsing import parse_config_file
 from sensor_creation import create_sensors
+from time_sources import SimpleTimeSource
 
 current_pisc_version = '0.0'
 current_config_version = '0.0'
@@ -39,12 +40,14 @@ if __name__ == "__main__":
     if len(sensor_info) == 0:
         print 'No sensor information found in configuration file.'
         sys.exit(1)
+        
+    time_source = SimpleTimeSource()
     
-    sensors = create_sensors(sensor_info)
+    sensors = create_sensors(sensor_info, time_source)
     
     print 'Created {0} sensors.'.format(len(sensors))
     
-    sensor_controller = SensorController(sensors)
+    sensor_controller = SensorController(sensors, time_source)
 
     # Start each sensor reading on its own thread.
     sensor_controller.startup_sensors()

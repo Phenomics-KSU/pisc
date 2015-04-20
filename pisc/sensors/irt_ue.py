@@ -16,9 +16,9 @@ from sensor import Sensor
 class IRT_UE(Sensor):
     '''Request and handle data from ThermoMETER-CT IRT sensor.'''
     
-    def __init__(self, name, sensor_id, port, baud, sample_rate, data_handlers):
+    def __init__(self, name, sensor_id, port, baud, sample_rate, time_source, data_handlers):
         '''Save properties for opening serial port later.'''
-        Sensor.__init__(self, 'irt_ue', name, sensor_id, data_handlers)
+        Sensor.__init__(self, 'irt_ue', name, sensor_id, time_source, data_handlers)
 
         self.port = port
         self.baud = baud
@@ -55,6 +55,10 @@ class IRT_UE(Sensor):
                 time.sleep(0.1);
                 continue
             
+            # Grab time here since it should, on average, represent the actual sensor measurement time.
+            # If we grab it after the read/write we could have a context switch from I/O interactions.
+            time_of_reading = self.time_source.get_time()
+            
             # Request a new reading from the sensor. 
             self.connection.write("\x01")
             
@@ -74,7 +78,7 @@ class IRT_UE(Sensor):
             temperature = (d1 * 256.0 + d2 - 1000.0) / 10.0
         
             # Pass temperature onto all data handlers.
-            self.handle_data((temperature,))
+            self.handle_data((time_of_reading, temperature))
         
             # Suspend execution until we want to sample again.
             time.sleep(self.sample_period)

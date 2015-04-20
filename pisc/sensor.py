@@ -3,11 +3,12 @@
 class Sensor:
     '''Base class for all sensors.''' 
     
-    def __init__(self, sensor_type, sensor_name, sensor_id, data_handlers):
+    def __init__(self, sensor_type, sensor_name, sensor_id, time_source, data_handlers):
         '''Base constructor'''
         self.sensor_type = sensor_type
         self.sensor_name = sensor_name
         self.sensor_id = sensor_id
+        self.time_source = time_source
         self.data_handlers = data_handlers
 
     def get_type(self):
