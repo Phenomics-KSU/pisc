@@ -28,6 +28,13 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
             y = fields[2]
             z = fields[3]
             self.controller.set_position(x, y, z)
+        if packet_type == 'tp':
+            time = fields[1]
+            x = fields[2]
+            y = fields[3]
+            z = fields[4]
+            self.controller.set_time(time)
+            self.controller.set_position(x, y, z)
 
         #socket.sendto(data.upper(), self.client_address)
         

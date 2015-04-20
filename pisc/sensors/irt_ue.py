@@ -4,6 +4,7 @@
 Sensor Name:    ThermoMETER CT-SF02-C1 
 Manufacturer:   Micro Epsilon (UE)
 Sensor Type:    Infrared Temperature
+Modifications:  Serial -> USB FTDI 3.3V DEV-09873
 """
 
 import time
