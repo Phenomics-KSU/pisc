@@ -6,22 +6,10 @@ from serial.serialutil import SerialException
 
 class SensorController:
     
-    def __init__(self, sensors, time_source):
+    def __init__(self, sensors):
         self.sensors = sensors
         self.threads = []
-        self.time_source = time_source
-        self.position = (0, 0, 0)
-    
-    def set_time(self, new_time):
-        print new_time
-        self.time_source.set_time(new_time)
         
-    def set_position(self, x, y, z):
-        self.position = (x, y, z)
-
-    def get_position(self):
-        return self.position
-
     def startup_sensors(self):
         '''Open each sensor interface and create a new thread to start reading data.'''
                 

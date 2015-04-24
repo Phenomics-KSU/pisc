@@ -9,7 +9,7 @@ from sensors.cropcircle import CropCircle
 # Data handlers
 from data_handlers.csv_log import CSVLog
 
-def create_sensors(sensor_info, time_source):
+def create_sensors(sensor_info, time_source, position_source):
     
     sensors = []
     

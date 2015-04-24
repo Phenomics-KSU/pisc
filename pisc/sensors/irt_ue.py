@@ -10,6 +10,7 @@ Modifications:  Serial -> USB FTDI 3.3V DEV-09873
 import time
 import serial
 import struct
+import logging
 
 from sensor import Sensor
 
@@ -57,7 +58,7 @@ class IRT_UE(Sensor):
             
             # Grab time here since it should, on average, represent the actual sensor measurement time.
             # If we grab it after the read/write we could have a context switch from I/O interactions.
-            time_of_reading = self.time_source.get_time()
+            time_of_reading = self.time_source.time
             
             # Request a new reading from the sensor. 
             self.connection.write("\x01")
@@ -66,10 +67,7 @@ class IRT_UE(Sensor):
             raw_data = self.connection.read(bytes_to_read)
             
             if len(raw_data) < bytes_to_read:
-                # Timeout occured.
-                # TODO: support general error reporting to a log file.  
-                #report_error("Missed IRT UE reading.")
-                print "no data received from IRT UE"
+                logging.getLogger().warning('Sensor: {0} timed out on read.'.format(self.name))
                 continue
         
             # Convert data into a temperature value.
