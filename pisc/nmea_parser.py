@@ -62,12 +62,12 @@ def convert_time(nmea_utc):
     utc_struct = time.gmtime()  # immutable, so cannot modify this one
     utc_list = list(utc_struct)
     # If one of the time fields is empty, return NaN seconds
-    if not nmea_utc[0:2] or not nmea_utc[2:4] or not nmea_utc[4:6]:
+    if not nmea_utc[0:2] or not nmea_utc[2:4] or not nmea_utc[4:6] or not nmea_utc[7:9]:
         return float('NaN')
     else:
         hours = int(nmea_utc[0:2])
         minutes = int(nmea_utc[2:4])
-        seconds = int(nmea_utc[4:6])
+        seconds = float(nmea_utc[4:9])
         utc_list[3] = hours
         utc_list[4] = minutes
         utc_list[5] = seconds
