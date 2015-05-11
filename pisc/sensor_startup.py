@@ -45,14 +45,22 @@ if __name__ == "__main__":
     if sys.float_info.epsilon > max_required_precision:
         log.critical('System doesn\'t support required precision. Time\'s will not be correct. Aborting.')
         sys.exit(1)
+        
+    # Default command line argument values
+    default_host = socket.gethostname()
+    default_port = 5000
     
     # Define necessary and optional command line arguments.
-    parser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
-    parser.add_argument('config_file', help='path to sensor configuration file')
-    args = parser.parse_args()
+    argparser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
+    argparser.add_argument('config_file', help='path to sensor configuration file')
+    argparser.add_argument('-n', '--host', default=default_host, help='Server host name. Default {0}.'.format(default_host))
+    argparser.add_argument('-p', '--port', default=default_port, help='Server port number. Default {0}.'.format(default_port))
+    args = argparser.parse_args()
 
     # Validate command line arguments.
     config_file = args.config_file
+    port = int(args.port)
+    host = args.host
     if not os.path.isfile(config_file):
         log.error('The configuration file could not be found:\'{0}\''.format(config_file))
         sys.exit(1)
@@ -78,9 +86,6 @@ if __name__ == "__main__":
 
     # Start each sensor reading on its own thread.
     sensor_controller.startup_sensors()
-
-    host = socket.gethostname()
-    port = 5000
 
     log.info('Server listening on {0}:{1}'.format(host, port))
     server = SensorControlServer(sensor_controller, time_source, position_source, host, port)
