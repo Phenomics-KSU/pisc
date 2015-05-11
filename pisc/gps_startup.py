@@ -55,10 +55,15 @@ if __name__ == "__main__":
             sys.exit(1)
     
     # TODO: Support multiple clients read in from config file
-    host = socket.gethostname()
-    port = 5000
-    print 'Connecting to server at {0}:{1}'.format(host, port)
-    client = SensorControlClient(host, port)
+    hosts = [(socket.gethostname(), 5000), ('Wheat', 5999)]
+    clients = []
+    
+    for host in hosts:
+        host_name = host[0]
+        port = host[1]
+        print 'Connecting to server at {0}:{1}'.format(host_name, port)
+        client = SensorControlClient(host_name, port)
+        clients.append(client)
     
     send_counter = 0 # number of position/time messages sent to by client
     display_count = 10 # how many messages to send before displaying feedback character
@@ -101,7 +106,8 @@ if __name__ == "__main__":
                     print 'Invalid UTC time: {0}'.format(utc_time)
                     continue
                 
-                client.send_time_and_position(utc_time, latitude, longitude, altitude)
+                for client in clients:
+                    client.send_time_and_position(utc_time, latitude, longitude, altitude)
 
                 # Printout period once for every 'display_count' messages for constant feedback that messages are being sent.
                 send_counter += 1
