@@ -23,9 +23,13 @@ class IRT_UE(Sensor):
 
         self.port = port
         self.baud = baud
-        self.sample_period = 1.0 / sample_rate
+        
+        self.sample_period = 0.0
+        if sample_rate != 0.0:
+            self.sample_period = 1.0 / sample_rate
         
         self.stop_reading = False # If true then sensor will stop reading data.
+        self.connection = None
         
     def open(self):
         '''Open serial port.'''
