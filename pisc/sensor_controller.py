@@ -5,14 +5,16 @@ import threading
 from serial.serialutil import SerialException
 
 class SensorController:
+    '''Start/stop sensors and filter commands for individual sensors. '''
     
     def __init__(self, sensors):
+        '''Constructor'''
         self.sensors = sensors
         self.threads = []
         
     def startup_sensors(self):
         '''Open each sensor interface and create a new thread to start reading data.'''
-                
+
         print 'Starting up sensors:'
                 
         for sensor in self.sensors:
@@ -32,8 +34,7 @@ class SensorController:
             t.start()
             
     def close_sensors(self):
-        '''Close all sensors.'''
-        
+        '''Stop and close all sensors.'''
         for sensor in self.sensors:
             sensor.stop()
             sensor.close()

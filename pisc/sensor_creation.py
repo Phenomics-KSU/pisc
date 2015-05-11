@@ -10,7 +10,10 @@ from sensors.cropcircle import CropCircle
 from data_handlers.csv_log import CSVLog
 
 def create_sensors(sensor_info, time_source, position_source):
-    
+    '''
+    Create new sensor for each element in sensor_info list and configures it with specified
+     time and position sources.
+    '''
     sensors = []
     
     for sensor_id, info in enumerate(sensor_info):
@@ -31,7 +34,6 @@ def create_sensors(sensor_info, time_source, position_source):
             sensor = IRT_UE(sensor_name, sensor_id, port, baud, sample_rate, time_source, data_handlers=[csv_log])
             
         elif sensor_type == 'cropcircle':
-            print 'Test Message: Creating crop circle.'
             sensor = CropCircle(sensor_name, sensor_id, *info[2:])
             
         else:

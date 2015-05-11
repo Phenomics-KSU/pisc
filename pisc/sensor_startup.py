@@ -18,7 +18,9 @@ current_pisc_version = '0.0'
 current_config_version = '0.0'
 
 if __name__ == "__main__":
-    
+    '''
+    Create sensors using configuration file and listens on port for incoming time/position/commands from client.
+    '''
     # Create root logger at lowest level since each handler will define its own level which will further filter.
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)

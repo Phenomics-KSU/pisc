@@ -13,6 +13,10 @@ from nmea_parser import parse_nmea_sentence
 from checksum_utils import check_nmea_checksum
 
 if __name__ == "__main__":
+    '''
+    Read in NMEA messages from either a GPS or test file and immediately send time/position information
+     to each sensor server.  Runs until keyboard interrupt.
+    '''
     
     default_rate = 10 # Hz.  Rate to read messages out of test file.
     
