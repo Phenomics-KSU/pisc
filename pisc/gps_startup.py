@@ -11,22 +11,52 @@ import time
 from sensor_control_client import SensorControlClient
 from nmea_parser import parse_nmea_sentence
 from checksum_utils import check_nmea_checksum
+from sensor_startup import default_server_host, default_server_port
 
 if __name__ == "__main__":
     '''
     Read in NMEA messages from either a GPS or test file and immediately send time/position information
      to each sensor server.  Runs until keyboard interrupt.
     '''
-    
     default_rate = 10 # Hz.  Rate to read messages out of test file.
+    default_gps_baud = 9600 
+    default_host = '{0} {1}'.format(default_server_host, default_server_port)
     
     # Define command line arguments.
     argparser = argparse.ArgumentParser(description='Pass position/time from GPS to PISC server.')
+    argparser.add_argument('-c', '--hosts', default=default_host, help='Either list of hosts or file path that contains list.'
+                           ' List can be separated by commas, newline characters or whitespace. Default \"{0}\"'.format(default_host))
     argparser.add_argument('-f', '--test_file', default='', help='Path to NMEA test log file.')
     argparser.add_argument('-r', '--test_rate', default=default_rate, help='Rate to parse messages from test file. Default {0} Hz'.format(default_rate))
     argparser.add_argument('-p', '--port', default='None', help='Serial port name ie COM4 or /dev/ttyS1.')
-    argparser.add_argument('-b', '--baud', default=9600, help='Baud rate of serial port. Default 9600.')
+    argparser.add_argument('-b', '--baud', default=default_gps_baud, help='Baud rate of serial port. Default {0}.'.format(default_gps_baud))
     args = argparser.parse_args()
+
+    # Determine if host is file path or a list.
+    hosts = args.hosts
+    if os.path.exists(hosts):
+        # Replace hosts variable with file contents to mimic passing in on command line.
+        with open(hosts) as hosts_file:
+            hosts = hosts_file.read()
+
+    # Switch out any reference to hostname with actual host name.
+    hosts = hosts.replace('hostname', socket.gethostname())
+
+    # Split hosts up into list.
+    hosts = hosts.replace('\n',' ').replace('\t',' ').replace(',', ' ').split()
+
+    # Check if we need to also use default host.
+    include_default_host = False
+    if 'default' in hosts:
+        include_default_host = True
+        hosts.remove('default')
+
+    # Pair every two elements in a tuple. Ignores an extra element at end.
+    hosts = zip(hosts,hosts[1:])[::2]
+    
+    if include_default_host:
+        # Now that things are paired insert default host at beginning of list.
+        hosts.insert(0, (default_server_host, default_server_port))
 
     # Validate command line arguments.
     port_name = args.port
@@ -58,13 +88,11 @@ if __name__ == "__main__":
             print 'Failed to open GPS\n{0}'.format(e)
             sys.exit(1)
     
-    # TODO: Support multiple clients read in from config file
-    hosts = [(socket.gethostname(), 5000), ('Wheat', 5999)]
+    # Connect a client to each host.
     clients = []
-    
     for host in hosts:
         host_name = host[0]
-        port = host[1]
+        port = int(host[1])
         print 'Connecting to server at {0}:{1}'.format(host_name, port)
         client = SensorControlClient(host_name, port)
         clients.append(client)

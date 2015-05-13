@@ -17,6 +17,10 @@ from time_position_sources import *
 current_pisc_version = '0.0'
 current_config_version = '0.0'
 
+# Default command line argument values.  Global so GPS startup can use as default client.
+default_server_host = socket.gethostname()
+default_server_port = 5000
+
 if __name__ == "__main__":
     '''
     Create sensors using configuration file and listens on port for incoming time/position/commands from client.
@@ -45,16 +49,12 @@ if __name__ == "__main__":
     if sys.float_info.epsilon > max_required_precision:
         log.critical('System doesn\'t support required precision. Time\'s will not be correct. Aborting.')
         sys.exit(1)
-        
-    # Default command line argument values
-    default_host = socket.gethostname()
-    default_port = 5000
     
     # Define necessary and optional command line arguments.
     argparser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
     argparser.add_argument('config_file', help='path to sensor configuration file')
-    argparser.add_argument('-n', '--host', default=default_host, help='Server host name. Default {0}.'.format(default_host))
-    argparser.add_argument('-p', '--port', default=default_port, help='Server port number. Default {0}.'.format(default_port))
+    argparser.add_argument('-n', '--host', default=default_server_host, help='Server host name. Default {0}.'.format(default_server_host))
+    argparser.add_argument('-p', '--port', default=default_server_port, help='Server port number. Default {0}.'.format(default_server_port))
     args = argparser.parse_args()
 
     # Validate command line arguments.
