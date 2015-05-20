@@ -25,6 +25,15 @@ if __name__ == "__main__":
     '''
     Create sensors using configuration file and listens on port for incoming time/position/commands from client.
     '''
+    
+    # Use home directory for root output directory. This is platform independent and works well with an installed package.
+    home_directory = os.path.expanduser('~')
+    
+    # Create timestamped directory for current run.
+    output_directory = os.path.join(home_directory, 'pisc-output/', time.strftime("pisc-%Y-%m-%d-%H-%M-%S/"))
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+    
     # Create root logger at lowest level since each handler will define its own level which will further filter.
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
@@ -36,7 +45,7 @@ if __name__ == "__main__":
     log.addHandler(console_handler)
     
     # Add another handler to record additional information to a log file.
-    handler = logging.FileHandler('pisc.log')
+    handler = logging.FileHandler(os.path.join(output_directory, 'pisc.log'))
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
     log.addHandler(handler)
@@ -78,7 +87,7 @@ if __name__ == "__main__":
     time_source = SimpleTimeSource()
     position_source = SimplePositionSource()
     
-    sensors = create_sensors(sensor_info, time_source, position_source)
+    sensors = create_sensors(sensor_info, time_source, position_source, output_directory)
     
     log.info('Created {0} sensors.'.format(len(sensors)))
 
