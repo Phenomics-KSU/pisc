@@ -79,8 +79,9 @@ class IRT_UE(Sensor):
             d2 = struct.unpack("B", raw_data[1])[0]
             temperature = (d1 * 256.0 + d2 - 1000.0) / 10.0
         
-            # Pass temperature onto all data handlers.
-            self.handle_data((time_of_reading, temperature))
+            # Pass temperature onto all data handlers if we have a valid timestamp.
+            if time_of_reading > 0:
+                self.handle_data((time_of_reading, temperature))
         
             # Suspend execution until we want to sample again.
             time.sleep(self.sample_period)

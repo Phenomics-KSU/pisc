@@ -13,6 +13,9 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
     time_source = None
     position_source = None
     
+    # Used to notify user that messages are being received.
+    first_message_received = False
+    
     def handle(self):
         '''Parse packet and pass data to its corresponding object.'''
         data = self.request[0].strip()
@@ -37,6 +40,10 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
             z = float(fields[4])
             self.time_source.time = time
             self.position_source.position = (x, y, z)
+
+        if not SocketHandlerUDP.first_message_received:
+            SocketHandlerUDP.first_message_received = True
+            logging.getLogger().info('Messages being received.')
 
         #socket.sendto(data.upper(), self.client_address)
         
