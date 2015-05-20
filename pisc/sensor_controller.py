@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import threading
+import logging
 
 from serial.serialutil import SerialException
 
@@ -15,15 +16,17 @@ class SensorController:
     def startup_sensors(self):
         '''Open each sensor interface and create a new thread to start reading data.'''
 
-        print 'Starting up sensors:'
+        log = logging.getLogger()
+
+        log.info('Starting up sensors:')
                 
         for sensor in self.sensors:
-            print 'ID: {2}  Type: {0}  Name: {1}'.format(sensor.get_type(), sensor.get_name(), sensor.get_id())
+            log.info('ID: {2}  Type: {0}  Name: {1}'.format(sensor.get_type(), sensor.get_name(), sensor.get_id()))
             
             try:    
                 sensor.open()
             except SerialException, e:
-                print 'ERROR: Failed to open sensor\n{0}'.format(e)
+                log.error('Failed to open sensor\n{0}'.format(e))
                 continue
                         
             # Now that sensor is open we can start a new thread to read data.

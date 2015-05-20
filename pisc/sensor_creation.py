@@ -2,6 +2,7 @@
 
 import time
 import os
+import logging
 
 # Sensors
 from sensors.irt_ue import IRT_UE
@@ -17,10 +18,12 @@ def create_sensors(sensor_info, time_source, position_source, output_directory):
     '''
     sensors = []
     
+    log = logging.getLogger()
+    
     for sensor_id, info in enumerate(sensor_info):
         
         if len(info) < 2:
-            print 'Invalid sensor configuration info.  Need at least type and name.\n\"{0}\"'.format(info)
+            log.error('Invalid sensor configuration info.  Need at least type and name.\n\"{0}\"'.format(info))
             continue
         
         sensor_type = info[0]
@@ -40,7 +43,7 @@ def create_sensors(sensor_info, time_source, position_source, output_directory):
             sensor = CropCircle(sensor_name, sensor_id, *info[2:])
             
         else:
-            print 'Sensor type \"{0}\" not valid.'.format(sensor_type)
+            log.error('Sensor type \"{0}\" not valid.'.format(sensor_type))
             sensor = None
             continue
 
