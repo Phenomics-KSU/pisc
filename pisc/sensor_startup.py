@@ -40,13 +40,13 @@ if __name__ == "__main__":
     
     # Add a console handler to show all messages to user.
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(logging.Formatter('%(message)s'))
     log.addHandler(console_handler)
     
     # Add another handler to record additional information to a log file.
     handler = logging.FileHandler(os.path.join(output_directory, 'pisc.log'))
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
     log.addHandler(handler)
     
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         log.error('No sensor information found in configuration file.')
         sys.exit(1)
         
-    time_source = SimpleTimeSource()
+    time_source = RelativePreciseTimeSource()
     position_source = SimplePositionSource()
     
     sensors = create_sensors(sensor_info, time_source, position_source, output_directory)

@@ -7,6 +7,7 @@ import logging
 # Sensors
 from sensors.irt_ue import IRT_UE
 from sensors.cropcircle import CropCircle
+from sensors.canon_mcu import CanonMCU
 
 # Data handlers
 from data_handlers.csv_log import CSVLog
@@ -29,15 +30,22 @@ def create_sensors(sensor_info, time_source, position_source, output_directory):
         sensor_type = info[0]
         sensor_name = info[1]
         
+        # TODO: make data handler configurable
+        csv_file_name = '{0}_{1}_{2}.csv'.format(sensor_name, sensor_id, time.strftime("%Y-%m-%d-%H-%M-%S"))
+        csv_file_path = os.path.join(output_directory, csv_file_name)
+        csv_log = CSVLog(csv_file_path, 0)
+        
         if sensor_type == 'irt_ue':
-            # TODO: make data handler configurable
-            csv_file_name = '{0}_{1}_{2}.csv'.format(sensor_name, sensor_id, time.strftime("%Y-%m-%d-%H-%M-%S"))
-            csv_file_path = os.path.join(output_directory, csv_file_name)
-            csv_log = CSVLog(csv_file_path, 0)
             port = info[2]
             baud = int(info[3])
             sample_rate = float(info[4])
             sensor = IRT_UE(sensor_name, sensor_id, port, baud, sample_rate, time_source, data_handlers=[csv_log])
+            
+        elif sensor_type == 'canon_mcu':
+            port = info[2]
+            baud = int(info[3])
+            trigger_period = float(info[4])
+            sensor = CanonMCU(sensor_name, sensor_id, port, baud, trigger_period, time_source, data_handlers=[csv_log])
             
         elif sensor_type == 'cropcircle':
             sensor = CropCircle(sensor_name, sensor_id, *info[2:])
