@@ -71,7 +71,7 @@ class IRT_UE(Sensor):
             raw_data = self.connection.read(bytes_to_read)
             
             if len(raw_data) < bytes_to_read:
-                logging.getLogger().warning('Sensor: {0} timed out on read.'.format(self.name))
+                logging.getLogger().warning('Sensor: {0} timed out on read.'.format(self.sensor_name))
                 continue
         
             # Convert data into a temperature value.
