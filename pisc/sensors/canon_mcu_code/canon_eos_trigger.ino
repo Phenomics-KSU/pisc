@@ -45,7 +45,16 @@ static bool receivedTriggerCommand = false;
 static bool usbInitializedCorrectly = true;
 static uint32_t last_capture_attempt = 0;
 
-// Trigger camera once command is received. Continuously called when device is connected and initalized.
+// Read all bytes from serial buffer.
+void clearSerialInputBuffer(void)
+{
+    while (Serial.available())
+    {
+        Serial.read();
+    }
+}
+
+// Trigger camera once command is received. Continuously called when device is connected and initialized.
 void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
 {
     if (!receivedTriggerCommand)
@@ -59,17 +68,19 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
     uint16_t ptp_return = eos.Capture();
     
     // Adding a short delay seems to fix an issue where the camera would randomly revert to a 'not opened' state.
-    delay(100);
+    delay(200);
     
-    // Record time of attempt instead of successful capture since trying to double capture puts the camera in a bad state.
-    last_capture_attempt = millis();
+    // Clear any previous requests for triggering.  This allows client to send multiple requests at once to ensure one gets received.
+    clearSerialInputBuffer();
     
     if (ptp_return == PTP_RC_OK)
     {
         // Send back last image name (not the one we just took) and also a bunch of other data.
+        Serial.print(statusFrame);
         EOSEventDump hex;
         //eos.GetDeviceInfoEx(&hex);
         eos.EventCheck(&hex);
+        Serial.println(statusFrame);
     }
     else
     {
@@ -77,18 +88,18 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
         Serial.print(statusFrame);
         Serial.print("Failure");
         Serial.print(ptp_return, HEX);
-        Serial.print(statusFrame);
+        Serial.println(statusFrame);
     }
 }
 
-// Sends 'state' text back over serial port if we're trying to take a picture.  Should be called from non-triggering states.
+// Send 'state' text back over serial port if we're trying to take a picture.  Should be called from non-triggering states.
 void reportInWrongState(char const * state)
 {
     if (receivedTriggerCommand) 
     {
         Serial.print(statusFrame);
         Serial.print(state);
-        Serial.print(statusFrame);
+        Serial.println(statusFrame);
     }
 }
 
@@ -102,39 +113,40 @@ void setup()
         Serial.println("OSC did not start.");
     }
     
+    clearSerialInputBuffer();
+
     delay(200);
 }
 
 void loop()
 {
+    if (!usbInitializedCorrectly)
+    {
+        // Report USB failure status.
+        Serial.print(statusFrame);
+        Serial.print("USB Failure");
+        Serial.println(statusFrame);
+        delay(1000);
+        return;
+    }
+
     if (Serial.available() > 0)
     {
         inByte = Serial.read();
         
-        if (!usbInitializedCorrectly)
+        if (inByte == 'a') // This is the special trigger character.
         {
-            // Report USB failure status.
-            Serial.print(statusFrame);
-            Serial.print("USB Failure");
-            Serial.print(statusFrame);
-        }
-        else if (inByte == 'a') // This is the special trigger character.
-        {
-            // Make sure enough time has elapsed since last time triggering camera.  
-            // This lets client send multiple rapid trigger commands to ensure one gets recognized.
-            if (millis() - last_capture_attempt > 100)
-            {
-                receivedTriggerCommand = true;
-            }
+            receivedTriggerCommand = true;
         }
         else 
         {
+            Serial.print(statusFrame);
             Serial.print("Invalid Byte: ");
-            Serial.println(inByte);
+            Serial.print(inByte);
+            Serial.println(statusFrame);
         }
     }
   
     // Execute state machine
     usb.Task();
 }
-

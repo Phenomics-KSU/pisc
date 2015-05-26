@@ -5,11 +5,11 @@ Sensor Name:    Canon EOS Camera (tested with T5i and 7D)
 Manufacturer:   Canon
 Sensor Type:    Camera
 Modifications:  Equipped with Arduino mini pro microcontroller with USB shield using PTP library.
+NOTES:          Due to timing constraints the 1st (and sometimes 2nd) captured image doesn't get logged. 
 """
 
 import time
 import serial
-import struct
 import logging
 
 from sensor import Sensor
@@ -30,7 +30,7 @@ class CanonMCU(Sensor):
         self.connection = None
         
         # Command to send to MCU to trigger camera. Send many trigger commands to minimize chance one gets missed.
-        self.trigger_command = '\x61' * 25
+        self.trigger_command = '\x61' * 20
         
         self.image_count = 0
         
@@ -81,32 +81,39 @@ class CanonMCU(Sensor):
             self.connection.write(self.trigger_command)
 
             logging.getLogger().debug('Sending trigger command.')
-                        
+            
+            self.image_count += 1
+
             # Suspend execution until we want to trigger again. 
             # Normally this would happen at the end of the loop, but we need to wait for the image file name to get sent back.
-            time.sleep(self.trigger_period)
+            if self.image_count <= 1:
+                # On first image we need to at least wait a couple seconds for camera to initialize and to receive large event dump.
+                sleep_time = max(2, self.trigger_period)
+            else:
+                sleep_time = self.trigger_period
+                
+            time.sleep(sleep_time)
             
             # Read all available bytes from serial port.  This won't block.
             bytes_to_read = self.connection.inWaiting()
             raw_event_dump = self.connection.read(bytes_to_read)
             
             logging.getLogger().debug('Read in {0} bytes'.format(len(raw_event_dump)))
+            #logging.getLogger().debug(raw_event_dump)
             
             if len(raw_event_dump) == 0:
                 logging.getLogger().warning('Camera: {0} no data returned from MCU.'.format(self.sensor_name))
                 continue
             
-            # If we got data back from MCU then we likely took a picture.
-            self.image_count += 1
+            if self.image_count <= 1:
+                # Camera won't return filename until NEXT time we time a picture (lags 1 behind).
+                continue
             
             # Try to parse a filename out of the camera event dump.
             image_filename = self.parse_filename(raw_event_dump)
             if len(image_filename) == 0:
-                
-                # First couple images usually don't return filename for some reason.  Don't report issue unless we've already taken two.
-                if self.image_count > 2:
-                    logging.getLogger().warning('Camera: {0} could not parse filename from event dump.'.format(self.sensor_name))
-                    # statuses = parse_status_message(raw_event_dump)
+                logging.getLogger().warning('Camera: {0} could not parse filename from event dump.'.format(self.sensor_name))
+                # statuses = parse_status_message(raw_event_dump)
                 continue
             
             logging.getLogger().debug(image_filename)
