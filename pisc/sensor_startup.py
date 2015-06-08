@@ -13,9 +13,7 @@ from sensor_controller import SensorController
 from config_parsing import parse_config_file
 from sensor_creation import create_sensors
 from time_position_sources import *
-
-current_pisc_version = '0.0'
-current_config_version = '0.0'
+from setup import current_pisc_version, current_config_version
 
 # Default command line argument values.  Global so GPS startup can use as default client.
 default_server_host = socket.gethostname()
