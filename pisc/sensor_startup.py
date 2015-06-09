@@ -83,8 +83,9 @@ if __name__ == "__main__":
         
     time_source = RelativePreciseTimeSource()
     position_source = SimplePositionSource()
+    orientation_source = SimpleOrientationSource()
     
-    sensors = create_sensors(sensor_info, time_source, position_source, output_directory)
+    sensors = create_sensors(sensor_info, time_source, position_source, orientation_source, output_directory)
     
     log.info('Created {0} sensors.'.format(len(sensors)))
 
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     sensor_controller.startup_sensors()
 
     log.info('Server listening on {0}:{1}'.format(host, port))
-    server = SensorControlServer(sensor_controller, time_source, position_source, host, port)
+    server = SensorControlServer(sensor_controller, time_source, position_source, orientation_source, host, port)
 
     # This will keep running until the program is interrupted with Ctrl-C
     try:

@@ -20,9 +20,17 @@ class SensorControlClient:
         '''Send 3D position over socket.'''
         self.sock.sendto("p,{0},{1},{2}\n".format(x, y, z), self.address)
         
+    def send_orientation(self, angle1, angle2, angle3):
+        '''Send 3D orientation over socket.'''
+        self.sock.sendto("o,{0},{1},{2}\n".format(angle1, angle2, angle3), self.address)
+        
     def send_time_and_position(self, time, x, y, z):
         '''Send both time and position at same time.'''
         self.sock.sendto("tp,{0},{1},{2},{3}\n".format(time, x, y, z), self.address)
+        
+    def send_time_position_and_orientation(self, time, x, y, z, angle1, angle2, angle3):
+        '''Send time, position and orientation at same time.'''
+        self.sock.sendto("tpo,{0},{1},{2},{3},{4},{5},{6}\n".format(time, x, y, z, angle1, angle2, angle3), self.address)
         
     def send_command_by_type(self, sensor_type, command):
         '''Send command to all sensors of specified type.'''

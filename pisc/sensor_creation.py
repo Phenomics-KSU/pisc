@@ -8,11 +8,12 @@ import logging
 from sensors.irt_ue import IRT_UE
 from sensors.canon_mcu import CanonMCU
 from sensors.position_passer import PositionPasser
+from sensors.orientation_passer import OrientationPasser
 
 # Data handlers
 from data_handlers.csv_log import CSVLog
 
-def create_sensors(sensor_info, time_source, position_source, output_directory):
+def create_sensors(sensor_info, time_source, position_source, orientation_source, output_directory):
     '''
     Create new sensor for each element in sensor_info list and configures it with specified
      time and position sources.
@@ -49,6 +50,9 @@ def create_sensors(sensor_info, time_source, position_source, output_directory):
 
         elif sensor_type == 'position':
             sensor = PositionPasser(sensor_name, sensor_id, time_source, position_source, data_handlers=[csv_log])
+    
+        elif sensor_type == 'orientation':
+            sensor = OrientationPasser(sensor_name, sensor_id, time_source, orientation_source, data_handlers=[csv_log])
 
         else:
             log.error('Sensor type \"{0}\" not valid.'.format(sensor_type))

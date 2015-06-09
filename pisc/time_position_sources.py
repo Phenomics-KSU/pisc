@@ -113,3 +113,36 @@ class SimplePositionSource(object):
             # reset event to wake up an waiting threads
             self.event.set()
             self.event.clear()
+
+class SimpleOrientationSource(object):
+    '''
+    Wrapper for a orientation tuple (angle1, angle2, angle3) that allows sensors/handlers thread-safe access to most recent orientation.
+    '''
+    def __init__(self, default_orientation = (0, 0, 0)):
+        '''Constructor'''
+        self._orientation = default_orientation
+        # Using a lock to be safe even though simple access/assignment should be atomic.
+        self.lock = threading.Lock()
+        # Use an event to notify any interested threads when a new orientation arrives.
+        self.event = threading.Event()
+            
+    def wait(self, timeout=None):
+        '''Return when a new orientation reading is available.'''
+        self.event.wait(timeout)
+            
+    @property
+    def orientation(self):
+        '''Return orientation (x,y,z) as tuple. Thread-safe.'''
+        with self.lock:
+            current_orientation = self._orientation
+        return current_orientation
+
+    @orientation.setter
+    def orientation(self, new_orientation):
+        '''Set new orientation. Thread-safe.'''
+        with self.lock:
+            self._orientation = new_orientation
+            # reset event to wake up an waiting threads
+            self.event.set()
+            self.event.clear()
+
