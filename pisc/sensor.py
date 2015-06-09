@@ -26,7 +26,7 @@ class Sensor:
     def handle_data(self, data):
         '''Pass the data on to each data handler.'''
         for data_handler in self.data_handlers:
-            data_handler.handle_data(data)
+            data_handler.handle_data(self.sensor_type, self.sensor_id, data)
             
     def open(self):
         '''Open sensor interface.  Need to override.'''

@@ -23,7 +23,7 @@ class CSVLog:
         self.buffer = []
         self.file = None
         
-    def handle_data(self, data):
+    def handle_data(self, sensor_type, sensor_id, data):
         '''Write data to file or buffer it depending on class settings. Data is a tuple.'''
         if (data is None) or (len(data) == 0):
             # Create blank one element tuple so it's obvious in log that no data was received.
