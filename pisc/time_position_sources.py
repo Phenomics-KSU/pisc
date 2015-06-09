@@ -48,7 +48,7 @@ class PreciseTimeSource(object):
                 elapsed_time = time.time() - self.last_set_time
                 
                 # Make sure nothing weird happened, for example the system clock was changed.
-                if elapsed_time > 0:
+                if elapsed_time >= 0:
                     current_time += elapsed_time
                 else:
                     logging.getLogger().warning('Negative time elapsed in precise time source {0}.'.format(elapsed_time))
@@ -91,6 +91,12 @@ class SimplePositionSource(object):
         self._position = default_position
         # Using a lock to be safe even though simple access/assignment should be atomic.
         self.lock = threading.Lock()
+        # Use an event to notify any interested threads when a new position arrives.
+        self.event = threading.Event()
+            
+    def wait(self, timeout=None):
+        '''Return when a new position reading is available.'''
+        self.event.wait(timeout)
             
     @property
     def position(self):
@@ -104,3 +110,6 @@ class SimplePositionSource(object):
         '''Set new position. Thread-safe.'''
         with self.lock:
             self._position = new_position
+            # reset event to wake up an waiting threads
+            self.event.set()
+            self.event.clear()

@@ -7,6 +7,7 @@ import logging
 # Sensors
 from sensors.irt_ue import IRT_UE
 from sensors.canon_mcu import CanonMCU
+from sensors.position_passer import PositionPasser
 
 # Data handlers
 from data_handlers.csv_log import CSVLog
@@ -45,6 +46,9 @@ def create_sensors(sensor_info, time_source, position_source, output_directory):
             baud = int(info[3])
             trigger_period = float(info[4])
             sensor = CanonMCU(sensor_name, sensor_id, port, baud, trigger_period, time_source, data_handlers=[csv_log])
+
+        elif sensor_type == 'position':
+            sensor = PositionPasser(sensor_name, sensor_id, time_source, position_source, data_handlers=[csv_log])
 
         else:
             log.error('Sensor type \"{0}\" not valid.'.format(sensor_type))

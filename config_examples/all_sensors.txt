@@ -1,5 +1,6 @@
 version, 0.0
 
-# Type,      Name,                    Type Dependent Settings 
+# Type,      Name,                    Type Dependent Settings
+position,    position,
 irt_ue,      irt_ue_4800101,          COM24, 115200, 10
 canon_mcu,   canon_t5i_192032019850,  COM25, 115200, 2
