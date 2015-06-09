@@ -42,5 +42,3 @@ class SensorController:
             sensor.stop()
             sensor.close()
                        
-        
-

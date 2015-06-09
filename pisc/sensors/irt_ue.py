@@ -57,7 +57,7 @@ class IRT_UE(Sensor):
             
             if self.stop_reading:
                 # Don't want to take sensor readings right now.
-                time.sleep(0.1);
+                time.sleep(0.1)
                 continue
             
             # Grab time here since it should, on average, represent the actual sensor measurement time.
