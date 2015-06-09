@@ -1,7 +1,5 @@
 from setuptools import setup
-
-current_pisc_version = '0.0'
-current_config_version = '0.0'
+from pisc.version import current_pisc_version
 
 def readme():
     with open('README.rst') as f:

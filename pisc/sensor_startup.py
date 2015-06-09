@@ -13,7 +13,7 @@ from sensor_controller import SensorController
 from config_parsing import parse_config_file
 from sensor_creation import create_sensors
 from time_position_sources import *
-from setup import current_pisc_version, current_config_version
+from version import current_pisc_version, current_config_version
 
 # Default command line argument values.  Global so GPS startup can use as default client.
 default_server_host = socket.gethostname()
@@ -23,7 +23,6 @@ if __name__ == "__main__":
     '''
     Create sensors using configuration file and listens on port for incoming time/position/commands from client.
     '''
-    
     # Use home directory for root output directory. This is platform independent and works well with an installed package.
     home_directory = os.path.expanduser('~')
     
