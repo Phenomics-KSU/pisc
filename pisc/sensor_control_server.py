@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
+import sys
 import socket
 import SocketServer
 import logging
 
-class SocketHandlerUDP(SocketServer.BaseRequestHandler):
+class SocketHandlerTCP(SocketServer.BaseRequestHandler):
     ''' The RequestHandler class for our server. '''
     
     # Class attributes. Subclass needs to override.
@@ -18,35 +19,61 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
     first_message_received = False
     
     def handle(self):
+        '''Called for each new connection.'''
+        
+        self.data = '' # data buffer
+        
+        while True:
+            # Block until new data is ready.
+            new_data = self.request.recv(1024)
+
+            if not new_data:
+                break # connection has been closed
+            
+            self.data += new_data.strip()
+
+            while True: # Process all complete packets in data buffer.
+                start_index = self.data.find('<')
+                end_index = self.data.find('>')
+                if start_index == -1 or end_index == -1:
+                    break # wait for new data so we have a complete packet
+    
+                # Process the packet
+                self.process_packet(self.data[start_index+1:end_index-1])
+                
+                # Remove what we just processed and anything before.
+                self.data = self.data[end_index+1:]
+
+            #self.request.send(self.data.upper())
+        
+        logging.getLogger().info('Connection to {0} closed.'.format(self.client_address[0]))
+    
+    def process_packet(self, data):
         '''Parse packet and pass data to its corresponding object.'''
-        data = self.request[0].strip()
-        #socket = self.request[1]
-        
         fields = data.split(',')
-        
         packet_type = fields[0]
         
         if packet_type == 't':
             time = float(fields[1])
             self.time_source.time = time
-        if packet_type == 'p':
+        elif packet_type == 'p':
             x = float(fields[1])
             y = float(fields[2])
             z = float(fields[3])
             self.position_source.position = (x, y, z)
-        if packet_type == 'o':
+        elif packet_type == 'o':
             angle1 = float(fields[1])
             angle2 = float(fields[2])
             angle3 = float(fields[3])
             self.orientation_source.orientation = (angle1, angle2, angle3)
-        if packet_type == 'tp':
+        elif packet_type == 'tp':
             time = float(fields[1])
             x = float(fields[2])
             y = float(fields[3])
             z = float(fields[4])
             self.time_source.time = time
             self.position_source.position = (x, y, z)
-        if packet_type == 'tpo':
+        elif packet_type == 'tpo':
             time = float(fields[1])
             x = float(fields[2])
             y = float(fields[3])
@@ -57,27 +84,42 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
             self.time_source.time = time
             self.position_source.position = (x, y, z)
             self.orientation_source.orientation = (angle1, angle2, angle3)
+        else:
+            logging.getLogger().warning('Unhandled packet of type {0}'.format(packet_type))
 
-        if not SocketHandlerUDP.first_message_received:
-            SocketHandlerUDP.first_message_received = True
+        if not SocketHandlerTCP.first_message_received:
+            SocketHandlerTCP.first_message_received = True
             logging.getLogger().info('Messages being received.')
 
-        #socket.sendto(data.upper(), self.client_address)
-        
+class TCPServerPass(SocketServer.TCPServer):
+    '''Override default error handling of only printing exception trace.'''
+    def __init__(self, *args, **kwargs):
+        '''Pass all arguments to base class.'''
+        SocketServer.TCPServer.__init__(self, *args, **kwargs)
+    def handle_error(self, request, client_address):
+        '''Called when an exception occurs in handle()'''
+        exception_type, value = sys.exc_info()[:2]
+        if exception_type is KeyboardInterrupt:
+            raise KeyboardInterrupt
+        else:
+            print 'Exception raised when handling TCP connection:\n{0} - {1}'.format(exception_type, value)
+
 class SensorControlServer:
     
     def __init__(self, sensor_controller, t_source, pos_source, orient_source, host, port):
-
         # Subclass handler to use passed in sensor controller.  Weird, but I couldn't find a better way to do it.
-        class SocketHandlerUDPWithController(SocketHandlerUDP):
+        class SocketHandlerTCPWithController(SocketHandlerTCP):
                 controller = sensor_controller
                 time_source = t_source
                 position_source = pos_source
                 orientation_source = orient_source
-        
+
         # Create the server at the specified address.
-        self.server = SocketServer.UDPServer((host, port), SocketHandlerUDPWithController)
+        self.server = TCPServerPass((host, port), SocketHandlerTCPWithController, bind_and_activate=False)
         
     def activate(self):
         '''Run the server until a termination signal is received.'''
+        self.server.allow_reuse_address = True # Prevent 'cannot bind to address' errors on restart
+        self.server.server_bind()     # Manually bind, to support allow_reuse_address
+        self.server.server_activate() # (see above comment)
         self.server.serve_forever()

@@ -46,7 +46,7 @@ if __name__ == "__main__":
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
     log.addHandler(handler)
-    
+ 
     log.info('PISC Version {0}'.format(current_pisc_version))
     
     # Time is treated as a double-precision floating point number which should always be true.
@@ -105,6 +105,8 @@ if __name__ == "__main__":
         log.info("Closing all sensors")
         sensor_controller.close_sensors()
         # TODO terminate all data handlers
+    except socket.error, e:
+        log.error('Server error: {0}'.format(e))
             
     log.info('Server shutting down.')
     

@@ -95,6 +95,11 @@ if __name__ == "__main__":
         port = int(host[1])
         print 'Connecting to server at {0}:{1}'.format(host_name, port)
         client = SensorControlClient(host_name, port)
+        try:
+            client.connect()
+        except socket.error, e:
+            print 'Error connecting to server: {0}'.format(e)
+    
         clients.append(client)
     
     send_counter = 0 # number of position/time messages sent to by client
@@ -139,7 +144,14 @@ if __name__ == "__main__":
                     continue
                 
                 for client in clients:
-                    client.send_time_and_position(utc_time, latitude, longitude, altitude)
+                    try:
+                        client.send_time_and_position(utc_time, latitude, longitude, altitude)
+                    except socket.error:
+                        print 'Socket error: client could not send time/position information. Trying to reconnect to {0}'.format(client.address)
+                        try:
+                            client.reconnect()
+                        except socket.error, e:
+                            print 'Error reconnecting: {0}'.format(e)
 
                 # Printout period once for every 'display_count' messages for constant feedback that messages are being sent.
                 send_counter += 1
