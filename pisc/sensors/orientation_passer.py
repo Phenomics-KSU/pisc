@@ -44,8 +44,8 @@ class OrientationPasser(Sensor):
             # Block until new orientation data arrives.
             self.orientation_source.wait()
             
-            angle1, angle2, angle3 = self.orientation_source.orientation
-            time = self.time_source.time
+            time, orientation = self.orientation_source.orientation
+            angle1, angle2, angle3 = orientation
             self.handle_data((time, angle1, angle2, angle3))
             
     def stop(self):

@@ -56,23 +56,14 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
         if packet_type == 't':
             time = float(fields[1])
             self.time_source.time = time
-        elif packet_type == 'p':
-            x = float(fields[1])
-            y = float(fields[2])
-            z = float(fields[3])
-            self.position_source.position = (x, y, z)
-        elif packet_type == 'o':
-            angle1 = float(fields[1])
-            angle2 = float(fields[2])
-            angle3 = float(fields[3])
-            self.orientation_source.orientation = (angle1, angle2, angle3)
         elif packet_type == 'tp':
             time = float(fields[1])
             x = float(fields[2])
             y = float(fields[3])
             z = float(fields[4])
             self.time_source.time = time
-            self.position_source.position = (x, y, z)
+            # Store reported time for position since that was the exact time it was measured.
+            self.position_source.position = (time, (x, y, z))
         elif packet_type == 'tpo':
             time = float(fields[1])
             x = float(fields[2])
@@ -82,8 +73,9 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
             angle2 = float(fields[6])
             angle3 = float(fields[7])
             self.time_source.time = time
-            self.position_source.position = (x, y, z)
-            self.orientation_source.orientation = (angle1, angle2, angle3)
+            # Store reported time for position/orientation since that was the exact time it was measured.
+            self.position_source.position = (time, (x, y, z))
+            self.orientation_source.orientation = (time, (angle1, angle2, angle3))
         else:
             logging.getLogger().warning('Unhandled packet of type {0}'.format(packet_type))
 

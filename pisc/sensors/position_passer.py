@@ -44,8 +44,8 @@ class PositionPasser(Sensor):
             # Block until new position data arrives.
             self.position_source.wait()
             
-            x, y, z = self.position_source.position
-            time = self.time_source.time
+            time, position = self.position_source.position
+            x, y, z = position
             self.handle_data((time, x, y, z))
             
     def stop(self):

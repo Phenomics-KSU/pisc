@@ -35,14 +35,6 @@ class SensorControlClient:
         '''Send time over socket.'''
         self.sock.sendall("<t,{0}>".format(time))
         
-    def send_position(self, x, y, z):
-        '''Send 3D position over socket.'''
-        self.sock.sendall("<p,{0},{1},{2}>".format(x, y, z))
-        
-    def send_orientation(self, angle1, angle2, angle3):
-        '''Send 3D orientation over socket.'''
-        self.sock.sendall("<o,{0},{1},{2}>".format(angle1, angle2, angle3))
-        
     def send_time_and_position(self, time, x, y, z):
         '''Send both time and position at same time.'''
         self.sock.sendall("<tp,{0},{1},{2},{3}>".format(time, x, y, z))
