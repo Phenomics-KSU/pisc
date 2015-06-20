@@ -44,9 +44,12 @@ class PositionPasser(Sensor):
             # Block until new position data arrives.
             self.position_source.wait()
             
-            time, position = self.position_source.position
+            time, frame, position, zone = self.position_source.position
             x, y, z = position
-            self.handle_data((time, x, y, z))
+            if zone.lower() == 'none':
+                self.handle_data((time, frame, x, y, z))
+            else:
+                self.handle_data((time, frame, x, y, z, zone))
             
     def stop(self):
         '''Set flag to temporarily stop passing data. Thread safe.'''

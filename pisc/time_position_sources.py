@@ -84,9 +84,9 @@ class RelativePreciseTimeSource(PreciseTimeSource):
 
 class SimplePositionSource(object):
     '''
-    Wrapper for a position tuple (time, (x,y,z)) that allows sensors/handlers thread-safe access to most recent position.
+    Wrapper for a position tuple (time, frame, (x,y,z), zone) that allows sensors/handlers thread-safe access to most recent position.
     '''
-    def __init__(self, default_position = (0, (0, 0, 0))):
+    def __init__(self, default_position = (0, 'None', (0, 0, 0), 'None')):
         '''Constructor'''
         self._position = default_position
         # Using a lock to be safe even though simple access/assignment should be atomic.
@@ -100,7 +100,7 @@ class SimplePositionSource(object):
             
     @property
     def position(self):
-        '''Return position (x,y,z) as tuple. Thread-safe.'''
+        '''Return position (time, frame, (x,y,z), zone) as tuple. Thread-safe.'''
         with self.lock:
             current_position = self._position
         return current_position
@@ -116,9 +116,9 @@ class SimplePositionSource(object):
 
 class SimpleOrientationSource(object):
     '''
-    Wrapper for a orientation tuple (time, (angle1, angle2, angle3)) that allows sensors/handlers thread-safe access to most recent orientation.
+    Wrapper for a orientation tuple (time, frame, rotation_type, (r1, r2, r3. r4)) that allows sensors/handlers thread-safe access to most recent orientation.
     '''
-    def __init__(self, default_orientation = (0, (0, 0, 0))):
+    def __init__(self, default_orientation = (0, 'None', 'None', (0, 0, 0, 0))):
         '''Constructor'''
         self._orientation = default_orientation
         # Using a lock to be safe even though simple access/assignment should be atomic.
@@ -132,7 +132,7 @@ class SimpleOrientationSource(object):
             
     @property
     def orientation(self):
-        '''Return orientation (x,y,z) as tuple. Thread-safe.'''
+        '''Return orientation (time, frame, rotation_type, (r1, r2, r3. r4)) as tuple. Thread-safe.'''
         with self.lock:
             current_orientation = self._orientation
         return current_orientation

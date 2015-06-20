@@ -145,7 +145,7 @@ if __name__ == "__main__":
                 
                 for client in clients:
                     try:
-                        client.send_time_and_position(utc_time, latitude, longitude, altitude)
+                        client.send_position(utc_time, 'LLA', latitude, longitude, altitude)
                     except socket.error:
                         print 'Socket error: client could not send time/position information. Trying to reconnect to {0}'.format(client.address)
                         try:

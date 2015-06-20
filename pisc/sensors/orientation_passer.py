@@ -44,9 +44,9 @@ class OrientationPasser(Sensor):
             # Block until new orientation data arrives.
             self.orientation_source.wait()
             
-            time, orientation = self.orientation_source.orientation
-            angle1, angle2, angle3 = orientation
-            self.handle_data((time, angle1, angle2, angle3))
+            time, frame, rotation_type, orientation = self.orientation_source.orientation
+            r1, r2, r3, r4 = orientation
+            self.handle_data((time, frame, rotation_type, r1, r2, r3, r4))
             
     def stop(self):
         '''Set flag to temporarily stop passing data. Thread safe.'''

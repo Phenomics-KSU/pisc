@@ -39,7 +39,7 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
                     break # wait for new data so we have a complete packet
     
                 # Process the packet
-                self.process_packet(self.data[start_index+1:end_index-1])
+                self.process_packet(self.data[start_index+1:end_index])
                 
                 # Remove what we just processed and anything before.
                 self.data = self.data[end_index+1:]
@@ -56,26 +56,31 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
         if packet_type == 't':
             time = float(fields[1])
             self.time_source.time = time
-        elif packet_type == 'tp':
+        elif packet_type == 'p':
             time = float(fields[1])
-            x = float(fields[2])
-            y = float(fields[3])
-            z = float(fields[4])
+            frame = fields[2]
+            x = float(fields[3])
+            y = float(fields[4])
+            z = float(fields[5])
+            zone = fields[6]
             self.time_source.time = time
             # Store reported time for position since that was the exact time it was measured.
-            self.position_source.position = (time, (x, y, z))
-        elif packet_type == 'tpo':
+            self.position_source.position = (time, frame, (x, y, z), zone)
+        elif packet_type == 'o':
             time = float(fields[1])
-            x = float(fields[2])
-            y = float(fields[3])
-            z = float(fields[4])
-            angle1 = float(fields[5])
-            angle2 = float(fields[6])
-            angle3 = float(fields[7])
+            frame = fields[2]
+            rotation_type = fields[3]
+            try:
+                r1 = float(fields[4])
+                r2 = float(fields[5])
+                r3 = float(fields[6])
+                r4 = float(fields[7])
+            except ValueError:
+                pass # Not all rotations have to be valid depending on rotation type.
+ 
             self.time_source.time = time
-            # Store reported time for position/orientation since that was the exact time it was measured.
-            self.position_source.position = (time, (x, y, z))
-            self.orientation_source.orientation = (time, (angle1, angle2, angle3))
+            # Store reported time for orientation since that was the exact time it was measured.
+            self.orientation_source.orientation = (time, frame, rotation_type, (r1, r2, r3, r4))
         else:
             logging.getLogger().warning('Unhandled packet of type {0}'.format(packet_type))
 
