@@ -46,7 +46,8 @@ def create_sensors(sensor_info, time_source, position_source, orientation_source
             port = info[2]
             baud = int(info[3])
             trigger_period = float(info[4])
-            sensor = CanonMCU(sensor_name, sensor_id, port, baud, trigger_period, time_source, data_handlers=[csv_log])
+            image_filename_prefix = info[5]
+            sensor = CanonMCU(sensor_name, sensor_id, port, baud, trigger_period, image_filename_prefix, time_source, data_handlers=[csv_log])
 
         elif sensor_type == 'position':
             sensor = PositionPasser(sensor_name, sensor_id, time_source, position_source, data_handlers=[csv_log])

@@ -17,7 +17,7 @@ from sensor import Sensor
 class CanonMCU(Sensor):
     '''Trigger canon camera using intermediate microcontroller.'''
     
-    def __init__(self, name, sensor_id, port, baud, trigger_period, time_source, data_handlers):
+    def __init__(self, name, sensor_id, port, baud, trigger_period, image_filename_prefix, time_source, data_handlers):
         '''Save properties for opening serial port later.'''
         Sensor.__init__(self, 'canon_mcu', name, sensor_id, time_source, data_handlers)
 
@@ -25,6 +25,8 @@ class CanonMCU(Sensor):
         self.baud = baud
         
         self.trigger_period = trigger_period
+        
+        self.image_filename_prefix = image_filename_prefix
 
         self.stop_triggering = False # If true then will stop taking pictures.
         self.connection = None
@@ -122,11 +124,14 @@ class CanonMCU(Sensor):
         
     def parse_filename(self, rawdata):
         '''Extract filename from raw event dump from camera.'''
-        # Find index of IMG prefix.
-        filename_index = rawdata.find('IMG')
+        # Find index of filename prefix.
+        filename_index = rawdata.find(self.image_filename_prefix)
         
         if filename_index < 0:
-            return "" # Can't find image name
+            # Couldn't find user's specified prefix so try default prefix.
+            filename_index = rawdata.find('IMG')
+            if filename_index < 0:
+                return "" # Can't find image name
             
         image_name = rawdata[filename_index : filename_index+12]
 
