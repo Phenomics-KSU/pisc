@@ -4,6 +4,7 @@ import sys
 import socket
 import SocketServer
 import logging
+import uuid
 
 class SocketHandlerTCP(SocketServer.BaseRequestHandler):
     ''' The RequestHandler class for our server. '''
@@ -20,6 +21,7 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
     
     def handle(self):
         '''Called for each new connection.'''
+        self.start_id = uuid.uuid4()
         
         self.data = '' # data buffer
         
@@ -32,22 +34,41 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
             
             self.data += new_data.strip()
 
-            while True: # Process all complete packets in data buffer.
-                start_index = self.data.find('<')
-                end_index = self.data.find('>')
-                if start_index == -1 or end_index == -1:
-                    break # wait for new data so we have a complete packet
-    
-                # Process the packet
-                self.process_packet(self.data[start_index+1:end_index])
-                
-                # Remove what we just processed and anything before.
-                self.data = self.data[end_index+1:]
+            packets = self.parse_packets()
+            
+            for packet in packets:
+                if 'start' in packet:
+                self.process_packet(packet)
 
             #self.request.send(self.data.upper())
         
         logging.getLogger().info('Connection to {0} closed.'.format(self.client_address[0]))
-    
+        
+    def parse_packets(self):
+        
+        packets = []
+        while True: # Process all complete packets in data buffer.
+            start_index = self.data.find('<')
+            end_index = self.data.find('>')
+            if start_index == -1 or end_index == -1:
+                break # wait for new data so we have a complete packet
+
+            # Process the packet
+            packets.append(self.data[start_index+1:end_index])
+
+            # Remove what we just processed and anything before.
+            self.data = self.data[end_index+1:]
+        
+    def clear_old_data(self):
+        '''Discard all data from request buffer.'''
+        self.request.setblocking(0)
+        while True:
+            try:
+                old_data = self.request.recv(1024)
+            except socket.error:
+                break # no more data to read
+        self.request.setblocking(1)
+            
     def process_packet(self, data):
         '''Parse packet and pass data to its corresponding object.'''
         fields = data.split(',')
