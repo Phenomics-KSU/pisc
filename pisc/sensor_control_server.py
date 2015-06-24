@@ -5,7 +5,7 @@ import socket
 import SocketServer
 import logging
 
-class SocketHandlerTCP(SocketServer.BaseRequestHandler):
+class SocketHandlerUDP(SocketServer.BaseRequestHandler):
     ''' The RequestHandler class for our server. '''
     
     # Class attributes. Subclass needs to override.
@@ -19,35 +19,12 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
     first_message_received = False
     
     def handle(self):
-        '''Called for each new connection.'''
+        '''Process packet and pass data to its corresponding object.'''
+        packet = self.request[0].strip()
+        #socket = self.request[1]
         
-        self.data = '' # data buffer
-        
-        while True:
-            # Block until new data is ready.
-            new_data = self.request.recv(1024)
+        self.process_packet(packet)
 
-            if not new_data:
-                break # connection has been closed
-            
-            self.data += new_data.strip()
-
-            while True: # Process all complete packets in data buffer.
-                start_index = self.data.find('<')
-                end_index = self.data.find('>')
-                if start_index == -1 or end_index == -1:
-                    break # wait for new data so we have a complete packet
-    
-                # Process the packet
-                self.process_packet(self.data[start_index+1:end_index])
-                
-                # Remove what we just processed and anything before.
-                self.data = self.data[end_index+1:]
-
-            #self.request.send(self.data.upper())
-        
-        logging.getLogger().info('Connection to {0} closed.'.format(self.client_address[0]))
-    
     def process_packet(self, data):
         '''Parse packet and pass data to its corresponding object.'''
         fields = data.split(',')
@@ -84,35 +61,35 @@ class SocketHandlerTCP(SocketServer.BaseRequestHandler):
         else:
             logging.getLogger().warning('Unhandled packet of type {0}'.format(packet_type))
 
-        if not SocketHandlerTCP.first_message_received:
-            SocketHandlerTCP.first_message_received = True
+        if not SocketHandlerUDP.first_message_received:
+            SocketHandlerUDP.first_message_received = True
             logging.getLogger().info('Messages being received.')
 
-class TCPServerPass(SocketServer.TCPServer):
+class UDPServerPass(SocketServer.UDPServer):
     '''Override default error handling of only printing exception trace.'''
     def __init__(self, *args, **kwargs):
         '''Pass all arguments to base class.'''
-        SocketServer.TCPServer.__init__(self, *args, **kwargs)
+        SocketServer.UDPServer.__init__(self, *args, **kwargs)
     def handle_error(self, request, client_address):
         '''Called when an exception occurs in handle()'''
         exception_type, value = sys.exc_info()[:2]
         if exception_type is KeyboardInterrupt:
             raise KeyboardInterrupt
         else:
-            print 'Exception raised when handling TCP connection:\n{0} - {1}'.format(exception_type, value)
+            print 'Exception raised when handling UDP packet:\n{0} - {1}'.format(exception_type, value)
 
 class SensorControlServer:
     
     def __init__(self, sensor_controller, t_source, pos_source, orient_source, host, port):
         # Subclass handler to use passed in sensor controller.  Weird, but I couldn't find a better way to do it.
-        class SocketHandlerTCPWithController(SocketHandlerTCP):
+        class SocketHandlerUDPWithController(SocketHandlerUDP):
                 controller = sensor_controller
                 time_source = t_source
                 position_source = pos_source
                 orientation_source = orient_source
 
         # Create the server at the specified address.
-        self.server = TCPServerPass((host, port), SocketHandlerTCPWithController, bind_and_activate=False)
+        self.server = UDPServerPass((host, port), SocketHandlerUDPWithController, bind_and_activate=False)
         
     def activate(self):
         '''Run the server until a termination signal is received.'''
