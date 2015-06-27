@@ -62,12 +62,12 @@ def convert_time(nmea_utc):
     utc_struct = time.gmtime()  # immutable, so cannot modify this one
     utc_list = list(utc_struct)
     # If one of the time fields is empty, return NaN seconds
-    if not nmea_utc[0:2] or not nmea_utc[2:4] or not nmea_utc[4:6] or not nmea_utc[7:9]:
+    if not nmea_utc[0:2] or not nmea_utc[2:4] or not nmea_utc[4:6]:
         return float('NaN')
     else:
         hours = int(nmea_utc[0:2])
         minutes = int(nmea_utc[2:4])
-        seconds = float(nmea_utc[4:9])
+        seconds = float(nmea_utc[4:])
         utc_list[3] = hours
         utc_list[4] = minutes
         utc_list[5] = seconds
@@ -120,7 +120,7 @@ parse_maps = {
         ],
     "AVR": [
         # Every index is 1 higher since the type takes up two fields.
-        ("utc_time", safe_float, 2),
+        ("utc_time", convert_time, 2),
         ("yaw_deg", safe_float, 3),
         ("tilt_deg", safe_float, 5),
         ("range", safe_float, 9),
@@ -136,12 +136,11 @@ parse_maps = {
         ("longitude", convert_longitude, 6),
         ("longitude_direction", str, 7),
         ("gps_quality", safe_int, 8),
-        ("num_satellites", safe_int, 9),
+        ("sats_used", safe_int, 9),
         ("dop", safe_float, 10),
         ("height_above_ellipsoid", str, 11), # has prefix EHT
         ]
     }
-
 
 def parse_nmea_sentence(nmea_sentence):
         
