@@ -5,7 +5,7 @@ Sensor Name:    Canon EOS Camera (tested with T5i and 7D)
 Manufacturer:   Canon
 Sensor Type:    Camera
 Modifications:  Equipped with Arduino mini pro microcontroller (MCU) with USB shield using PTP library.
-Notes:          Due to how the PTP library and MCU are setup the very last captured image isn't logged. 
+Notes:          Due to how the PTP library and MCU are setup the very last captured image sometimes isn't logged. 
 """
 
 import time
@@ -24,7 +24,7 @@ class CanonMCU(Sensor):
         self.port = port
         self.baud = baud
         
-        self.trigger_period = trigger_period
+        self.trigger_period = float(trigger_period)
         
         self.image_filename_prefix = image_filename_prefix
 
@@ -44,28 +44,28 @@ class CanonMCU(Sensor):
         self.synced_utc_time = 0
         
         # Last image filename received by camera.  
-        self.last_image_filename = 'none'
+        self.last_image_filename = None
         
         # How many dump messages that filename couldn't be extracted from.
         self.failed_image_name_parse_count = 0
-        
+
         self.image_count = 0
         
         self.input_stream = '' # data buffer received from MCU that hasn't been used yet
         
     def open(self):
         '''Open serial port.'''
-        # Set short read timeout so can re-send trigger command on a failed ack.
         self.connection = serial.Serial(port=self.port,
                                         baudrate=self.baud,
                                         parity=serial.PARITY_NONE,
                                         stopbits=serial.STOPBITS_ONE,
                                         bytesize=serial.EIGHTBITS,
-                                        timeout=0.1)
+                                        timeout=self.trigger_period)
         
     def close(self):
         '''Close serial port.'''
         if self.connection is not None:
+            self.disable_periodic_triggering()
             self.connection.close()
         
     def start(self):
@@ -85,6 +85,9 @@ class CanonMCU(Sensor):
         # Create mapping between our time source and relative MCU time source so we can tag images with times.
         self.sync_mcu_time()
             
+        # Tell camera how often we want to take pictures. Convert to an integer in milliseconds because that's what MCU is expecting.
+        self.change_trigger_period(int(self.trigger_period * 1000))
+            
         while True:
             
             if self.stop_triggering:
@@ -92,17 +95,15 @@ class CanonMCU(Sensor):
                 self.disable_periodic_triggering()
                 time.sleep(0.5)
                 continue
-
-            # Tell camera how often we want to take pictures.  Do it each time through loop in case MCU doesn't pick up on one command.
-            # Convert to an integer in milliseconds because that's what MCU is expecting.
-            self.change_trigger_period(int(self.trigger_period * 1000))
             
             # Try to read in any new sensor data.  Set timeout so give camera time to respond, but can also warn user that no data is coming back.
             self.connection.timeout = self.trigger_period + 2
-            newly_read_data = self.connection.read()
+            newly_read_data = self.connection.readline()
             
             if newly_read_data is None or len(newly_read_data) == 0:
                 logging.getLogger().warning('No new data received from camera {}. Is it still plugged in?'.format(self.sensor_name))
+                # Maybe camera didn't get trigger period request.  Try again.
+                self.change_trigger_period(int(self.trigger_period * 1000))
                 continue
             
             logging.getLogger().debug('Camera {} read in {} bytes'.format(self.sensor_name, len(newly_read_data)))
@@ -132,7 +133,11 @@ class CanonMCU(Sensor):
             
     def change_trigger_period(self, new_trigger_period):
         '''Change how often camera is taking pictures.  Should be in milliseconds.  Set to zero to stop taking images.'''
-        self.send_command('p{}\n'.format(new_trigger_period), 'change trigger period', ack_timeout=0)
+        #self.send_command('p{}\n'.format(new_trigger_period), 'change trigger period', ack_timeout=0)
+        self.send_command('\x70'.format(new_trigger_period), 'change trigger period', ack_timeout=0)
+        for trigger_digit in str(new_trigger_period):
+            self.send_command(trigger_digit, 'change trigger period', ack_timeout=0)
+        self.send_command('\n', 'change trigger period', ack_timeout=0)
         
     def disable_periodic_triggering(self):
         '''Tell MCU to stop triggering camera at specified rate.'''
@@ -147,7 +152,7 @@ class CanonMCU(Sensor):
         if self.connection is None:
             logging.getLogger().error('Could not send {} command to camera {} due to serial port not being open.'.format(command_description, self.sensor_name))
             return False
-        
+
         self.connection.write(command)
         
         if ack_timeout <= 0:
@@ -187,14 +192,18 @@ class CanonMCU(Sensor):
         new_images = []
         
         for (message_type, contents) in messages:
+            
+            #logging.getLogger().warning('Handling message type {}'.format(message_type))
         
             if message_type == 'status':
                 logging.getLogger().warning('Camera {} reported status {}'.format(self.sensor_name, contents))
             elif message_type == 'dump':
                 filename = self.parse_filename(contents)
                 if filename is not None and len(filename) > 0:
+                    #print 'Parsed from dump: ' + filename
                     self.last_image_filename = filename
                 else:
+                    #print 'failed to parse filename from dump'
                     self.failed_image_name_parse_count += 1
                     if self.image_count > 1:
                         # We've already parsed one successful image so we shouldn't have a failure here.
@@ -208,8 +217,12 @@ class CanonMCU(Sensor):
                 except ValueError:
                     logging.getLogger().error('Camera {} MCU time could not be converted to a float.'.format(self.sensor_name))
                     continue # invalid time
+                #print 'Relative time ' + str(relative_time)
                 utc_time = self.synced_utc_time + relative_time  
-                new_images.append((utc_time, filename))
+                #print 'UTC time ' + str(utc_time)
+                #print 'Goes with ' + str(self.last_image_filename)
+                if self.last_image_filename is not None:
+                    new_images.append((utc_time, self.last_image_filename))
                 self.image_count += 1
 
         return new_images

@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include <SPI.h>
 #include <usbhub.h>
 
@@ -49,6 +51,7 @@ static uint32_t sync_time = 0; // MCU time that the sync command was received.  
 static uint32_t trigger_period = 0; // Period in milliseconds before triggering camera.  If set to 0 then periodic triggering is disabled.
 static uint32_t previous_capture_time = 0; // Time in milliseconds of the last image.  Not the one that was just taken.
 static uint32_t last_capture_attempt = 0; // Time in milliseconds that the camera was attempted to be triggered.
+static uint32_t image_count = 0;
 
 // Read all bytes from serial buffer.
 void clearSerialInputBuffer(void)
@@ -62,9 +65,17 @@ void clearSerialInputBuffer(void)
 // Trigger camera once command is received. Continuously called when device is connected and initialized.
 void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
 {
+    const int minimum_loop_time = 750; // Ensures no errors from over triggering.
+    int milliseconds_since_last_loop = millis() - last_capture_attempt;
+    
+    if (milliseconds_since_last_loop < minimum_loop_time)
+    {
+        return; // Limit max rate that function runs.
+    }
+    
     if (trigger_period > 0)
     {
-        if ((millis() - last_capture_attempt) > trigger_period)
+        if (milliseconds_since_last_loop > trigger_period)
         {
             receivedTriggerCommand = true; // time to take a picture
         }
@@ -81,9 +92,10 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
     uint32_t capture_time = millis();
     
     uint16_t ptp_return = eos.Capture();
-    
-    // Add a short delay before calling event dump below so camera can actually take image.
-    delay(300);
+   
+    // Add a delay before calling event dump below so camera can actually take image. 
+    // If this is too short the event dump might be for the last image (not the one we just took).
+    delay(550); 
     
     // Clear any previous requests for triggering.  This allows client to send multiple requests at once to ensure one gets received.
     //clearSerialInputBuffer(); // KLM disabled because different types of commands are being sent now.
@@ -94,15 +106,27 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
         Serial.print(statusStartFrame);
         Serial.print("dump-");
         EOSEventDump hex;
-        //eos.GetDeviceInfoEx(&hex);
         eos.EventCheck(&hex);
         Serial.println(statusEndFrame);
         
         // Send back elapsed time of previous image since that's what the filename in the event dump is for.
-        printTimeMessage(previous_capture_time - sync_time);
+        uint32_t time_since_sync = 0;
+        if (capture_time > sync_time)
+        {
+            time_since_sync = capture_time - sync_time; // avoid rollover right after sync.
+        }
+        printTimeMessage(time_since_sync);
         
         // Update previous capture so can use it for next time.
         previous_capture_time = capture_time;
+        
+        if (image_count <= 1)
+        {
+            // Give camera more time for first couple images.
+            //delay(2000);
+        }
+        
+        image_count++;
     }
     else
     {
@@ -145,16 +169,28 @@ void printTimeMessage(uint32_t time)
 }
 
 // Return new line terminated string from serial port. Newline not included.
-void readSerialLine(String & newString)
+void readSerialLine(char * newLineBuffer, int max_length)
 {
-    while (Serial.available())
+    int rx_index = 0;
+    while (true)
     {
-        char inChar = (char)Serial.read(); 
-        if (inChar == '\n') 
+        if (Serial.available())
         {
-            return; // hit end of string.
+            if (rx_index >= (max_length-1))
+            {
+                break; // no more room in buffer
+            }
+            
+            byte inChar = Serial.read();
+            
+            newLineBuffer[rx_index] = inChar;
+            rx_index++;
+            if (inChar == '\n')
+            {
+                newLineBuffer[rx_index] = '\0';
+                return; // hit end of string.
+            }
         }
-        newString += inChar;
     } 
 }
 
@@ -203,13 +239,20 @@ void loop()
         }
         else if (inByte == 'p') // change periodic trigger command
         {
-            String new_period;
-            readSerialLine(new_period);
-            trigger_period = new_period.toInt();
+            char period_buffer[20];
+            readSerialLine(period_buffer, 20);
+            //Serial.print(String(period_buffer));
+            //printStatusMessage("Trigger period received:  " + String(period_buffer));
+            int new_period = atoi(period_buffer);
+            if (new_period != trigger_period)
+            {
+                printStatusMessage("New trigger period: " + String(new_period));
+            }
+            trigger_period = new_period;
         }
         else 
         {
-            printStatusMessage("Invalid Byte: " + inByte);
+            //printStatusMessage("Invalid Byte: " + String(inByte));
         }
     }
   
