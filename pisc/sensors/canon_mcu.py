@@ -38,7 +38,7 @@ class CanonMCU(Sensor):
         self.trigger_command = '\x74' # ascii t
         
         # Acknowledgment command
-        self.ack_command = '\x61' # ascii a
+        self.sync_ack_command = '\x61' # ascii a
         
         # UTC timestamp that all MCU reported image times are relative to.
         self.synced_utc_time = 0
@@ -62,11 +62,20 @@ class CanonMCU(Sensor):
                                         bytesize=serial.EIGHTBITS,
                                         timeout=self.trigger_period)
         
-    def close(self):
-        '''Close serial port.'''
+    def is_closed(self):
+        '''Return true if sensor is closed.'''
+        return self.connection is None or not self.connection.isOpen()
+        
+    def actually_close(self):
+        '''Actually closes serial port.  Called internally at a predefined time.'''
         if self.connection is not None:
             self.disable_periodic_triggering()
-            self.connection.close()
+            try:
+                self.connection.close()
+            except serial.SerialException:
+                pass
+            finally:
+                self.connection = None 
         
     def start(self):
         '''Enter infinite loop constantly taking pictures or waiting for trigger commands.'''
@@ -89,7 +98,10 @@ class CanonMCU(Sensor):
         self.change_trigger_period(int(self.trigger_period * 1000))
             
         while True:
-            
+
+            if self.received_close_request:
+                break # end thread
+
             if self.stop_triggering:
                 # Don't want to take pictures right now.
                 self.disable_periodic_triggering()
@@ -98,8 +110,12 @@ class CanonMCU(Sensor):
             
             # Try to read in any new sensor data.  Set timeout so give camera time to respond, but can also warn user that no data is coming back.
             self.connection.timeout = self.trigger_period + 2
-            newly_read_data = self.connection.readline()
-            
+            try:
+                newly_read_data = self.connection.readline()
+            except serial.SerialException as e:
+                logging.getLogger().error("Camera {} threw exception when reading from serial port: {}\nClosing sensor.".format(self.sensor_name, e))
+                break
+
             if newly_read_data is None or len(newly_read_data) == 0:
                 logging.getLogger().warning('No new data received from camera {}. Is it still plugged in?'.format(self.sensor_name))
                 # Maybe camera didn't get trigger period request.  Try again.
@@ -116,6 +132,10 @@ class CanonMCU(Sensor):
             for (image_utc_time, filename) in new_images:
                 self.handle_data((image_utc_time, filename))
         
+         # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.        
+        self.received_close_request = False
+        self.actually_close()
+        
     def sync_mcu_time(self):
         '''
          Synchronize camera MCU to utc time.  This won't start taking pictures, but will tell the camera MCU
@@ -129,21 +149,25 @@ class CanonMCU(Sensor):
         while not sync_successful:
             # Grab current UTC time so we can use relative MCU times when images come back.
             self.synced_utc_time = self.time_source.time
-            sync_successful = self.send_command(self.sync_command, command_description='sync', ack_timeout=1)
+            sync_successful = self.send_command(self.sync_command, command_description='sync', expected_ack = self.sync_ack_command, ack_timeout = 1)
             
     def change_trigger_period(self, new_trigger_period):
         '''Change how often camera is taking pictures.  Should be in milliseconds.  Set to zero to stop taking images.'''
-        #self.send_command('p{}\n'.format(new_trigger_period), 'change trigger period', ack_timeout=0)
-        self.send_command('\x70'.format(new_trigger_period), 'change trigger period', ack_timeout=0)
-        for trigger_digit in str(new_trigger_period):
-            self.send_command(trigger_digit, 'change trigger period', ack_timeout=0)
-        self.send_command('\n', 'change trigger period', ack_timeout=0)
+        change_successful = False
+        while not change_successful:
+            #self.send_command('p{}\n'.format(new_trigger_period), 'change trigger period')
+            self.send_command('\x70'.format(new_trigger_period), 'change trigger period')
+            for trigger_digit in str(new_trigger_period):
+                self.send_command(trigger_digit, 'change trigger period')
+            change_successful = self.send_command('\n', 'change trigger period')
+            if not change_successful:
+                time.sleep(0.5) # wait before retrying
         
     def disable_periodic_triggering(self):
         '''Tell MCU to stop triggering camera at specified rate.'''
         self.change_trigger_period(0)
         
-    def send_command(self, command, command_description, ack_timeout):
+    def send_command(self, command, command_description, expected_ack = 'none', ack_timeout = 0):
         '''
         Send specified command over connection.  Command description should describe what type of command is being sent. 
         Ack timeout is the serial port read timeout specified in seconds.  If not ack is expected then set timeout argument 
@@ -153,7 +177,12 @@ class CanonMCU(Sensor):
             logging.getLogger().error('Could not send {} command to camera {} due to serial port not being open.'.format(command_description, self.sensor_name))
             return False
 
-        self.connection.write(command)
+        expected_ack = str(expected_ack)
+
+        try:
+            self.connection.write(command)
+        except serial.SerialException as e:
+            logging.getLogger().error("Camera {} threw exception when writing to serial port: {}".format(self.sensor_name, e))
         
         if ack_timeout <= 0:
             return True # don't want to wait for acknowledgment.
@@ -161,16 +190,17 @@ class CanonMCU(Sensor):
         # update read timeout on serial port
         self.connection.timeout = ack_timeout
         
-        ack_response = self.connection.read()
+        expected_bytes = len(expected_ack)
+        ack_response = self.connection.read(expected_bytes)
         
         if ack_response is None or len(ack_response) == 0:
             logging.getLogger().error('Timed out when waiting for acknowledgment from camera {} to {} command.'.format(self.sensor_name, command_description))
             return False # no ack received
         
-        if ack_response == self.ack_command:
+        if ack_response == expected_ack:
             return True # received correct ack command
         else:
-            logging.getLogger().error('Received \'{}\' from camera {} when waiting for ack command \'{}\'.'.format(ack_response, self.sensor_name, self.ack_commands))
+            logging.getLogger().error('Received \'{}\' from camera {} when waiting for ack command \'{}\'.'.format(ack_response, self.sensor_name, expected_ack))
             return False
         
     def parse_new_data(self, data):
@@ -208,6 +238,7 @@ class CanonMCU(Sensor):
                     if self.image_count > 1:
                         # We've already parsed one successful image so we shouldn't have a failure here.
                         logging.getLogger().error('Could not parse filename from camera {} after successfully parsing one.'.format(self.sensor_name))
+                        #logging.getLogger().error('Contents:\n{}.'.format(contents))
                     elif self.failed_image_name_parse_count > 3:
                         # Check how many we've failed to parse.  If it's too many than the user problem specified the wrong camera prefix.
                         logging.getLogger().error('Failed to parse filename from camera {} multiple times.  Is specified image prefix {} correct?'.format(self.sensor_name, self.image_filename_prefix))

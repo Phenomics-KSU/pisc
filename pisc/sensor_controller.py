@@ -2,6 +2,7 @@
 
 import threading
 import logging
+import time
 
 from serial.serialutil import SerialException
 
@@ -38,7 +39,15 @@ class SensorController:
             
     def close_sensors(self):
         '''Stop and close all sensors.'''
+        max_time_to_close = 3.0
+        log = logging.getLogger()
         for sensor in self.sensors:
-            sensor.stop()
+            log.info('Closing sensor {}'.format(sensor.sensor_name))
+            first_close_time = time.time()
             sensor.close()
+            while not sensor.is_closed():
+                if time.time() - first_close_time > max_time_to_close:
+                    log.warn('Couldn\'t close sensor in {} seconds...moving to next sensor.'''.format(max_time_to_close))
+                    break
+                time.sleep(0.2)
                        

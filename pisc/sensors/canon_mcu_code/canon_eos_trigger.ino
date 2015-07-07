@@ -52,6 +52,7 @@ static uint32_t trigger_period = 0; // Period in milliseconds before triggering 
 static uint32_t previous_capture_time = 0; // Time in milliseconds of the last image.  Not the one that was just taken.
 static uint32_t last_capture_attempt = 0; // Time in milliseconds that the camera was attempted to be triggered.
 static uint32_t image_count = 0;
+const int minimum_loop_time = 750; // Ensures no errors from over triggering.
 
 // Read all bytes from serial buffer.
 void clearSerialInputBuffer(void)
@@ -65,7 +66,6 @@ void clearSerialInputBuffer(void)
 // Trigger camera once command is received. Continuously called when device is connected and initialized.
 void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
 {
-    const int minimum_loop_time = 750; // Ensures no errors from over triggering.
     int milliseconds_since_last_loop = millis() - last_capture_attempt;
     
     if (milliseconds_since_last_loop < minimum_loop_time)
@@ -248,7 +248,15 @@ void loop()
             {
                 printStatusMessage("New trigger period: " + String(new_period));
             }
-            trigger_period = new_period;
+            if (new_period != 0 && new_period < minimum_loop_time)
+            {
+                printStatusMessage("New period of " + String(new_period) + " is less than minimum loop time of " + String(minimum_loop_time));
+            }
+            else // new trigger time is valid
+            {
+                trigger_period = new_period;
+            }
+            //Serial.print(String(new_period)); // ack
         }
         else 
         {

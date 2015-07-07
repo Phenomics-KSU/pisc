@@ -95,8 +95,8 @@ class SimplePositionSource(object):
         self.event = threading.Event()
             
     def wait(self, timeout=None):
-        '''Return when a new position reading is available.'''
-        self.event.wait(timeout)
+        '''Return true when a new position reading is available. If false is returned then timed out.'''
+        return self.event.wait(timeout)
             
     @property
     def position(self):
@@ -127,8 +127,8 @@ class SimpleOrientationSource(object):
         self.event = threading.Event()
             
     def wait(self, timeout=None):
-        '''Return when a new orientation reading is available.'''
-        self.event.wait(timeout)
+        '''Return true when a new orientation reading is available. If false is returned then timed out.'''
+        return self.event.wait(timeout)
             
     @property
     def orientation(self):

@@ -10,6 +10,7 @@ class Sensor:
         self.sensor_id = sensor_id
         self.time_source = time_source
         self.data_handlers = data_handlers
+        self.received_close_request = False
 
     def get_type(self):
         '''Return type of sensor.'''
@@ -33,7 +34,11 @@ class Sensor:
         raise NotImplementedError
 
     def close(self):
-        '''Close sensor interface.  Need to override.'''
+        '''Request to close sensor interface. Don't override, just check flag periodically in thread.'''
+        self.received_close_request = True
+    
+    def is_closed(self):
+        '''Return true once sensor is actually closed. Need to override.'''
         raise NotImplementedError
 
     def start(self):

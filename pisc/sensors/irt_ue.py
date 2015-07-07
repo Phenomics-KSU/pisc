@@ -41,10 +41,18 @@ class IRT_UE(Sensor):
                                         bytesize=serial.EIGHTBITS,
                                         timeout=self.sample_period)
         
-    def close(self):
-        '''Close serial port.'''
-        if self.connection is not None:
+    def is_closed(self):
+        '''Return true if sensor is closed.'''
+        return self.connection is None or not self.connection.isOpen()
+        
+    def actually_close(self):
+        '''Actually closes serial port.  Called internally at a predefined time.'''
+        try:
             self.connection.close()
+        except (AttributeError, serial.SerialException):
+            pass
+        finally:
+            self.connection = None 
         
     def start(self):
         '''Enter infinite loop constantly reading data.'''
@@ -54,6 +62,9 @@ class IRT_UE(Sensor):
         self.connection.flushInput()
                 
         while True:
+            
+            if self.received_close_request:
+                break # end thread
             
             if self.stop_reading:
                 # Don't want to take sensor readings right now.
@@ -85,6 +96,10 @@ class IRT_UE(Sensor):
         
             # Suspend execution until we want to sample again.
             time.sleep(self.sample_period)
+        
+        # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.        
+        self.received_close_request = False
+        self.actually_close()
             
     def stop(self):
         '''Set flag to temporarily stop reading data. Thread safe.'''
