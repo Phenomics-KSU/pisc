@@ -58,8 +58,6 @@ class IRT_UE(Sensor):
         '''Enter infinite loop constantly reading data.'''
         # How many bytes to read each time sensor sends data.
         bytes_to_read = 2
-        
-        self.connection.flushInput()
                 
         while True:
             
@@ -74,7 +72,10 @@ class IRT_UE(Sensor):
             # Grab time here since it should, on average, represent the actual sensor measurement time.
             # If we grab it after the read/write we could have a context switch from I/O interactions.
             time_of_reading = self.time_source.time
-            
+
+            # Make sure nothing extra is sitting in buffer so that next two bytes we read in should be from new request. 
+            self.connection.flushInput()
+
             # Request a new reading from the sensor. 
             self.connection.write("\x01")
             
