@@ -132,7 +132,7 @@ class CanonMCU(Sensor):
             for (image_utc_time, filename) in new_images:
                 self.handle_data((image_utc_time, filename))
         
-         # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.        
+        # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.        
         self.received_close_request = False
         self.actually_close()
         
@@ -291,12 +291,17 @@ class CanonMCU(Sensor):
 
     def parse_filename(self, rawdata):
         '''Extract filename from raw event dump from camera.'''
+        # If user specified prefix fails then fall back on default prefix.
+        # Actual prefix is the one that was actually in filename.
+        actual_image_prefix = self.image_filename_prefix
+        
         # Find index of filename prefix.
-        filename_index = rawdata.find(self.image_filename_prefix)
+        filename_index = rawdata.find(actual_image_prefix)
         
         if filename_index < 0:
             # Couldn't find user's specified prefix so try default prefix.
-            filename_index = rawdata.find('IMG')
+            actual_image_prefix = 'IMG'
+            filename_index = rawdata.find(actual_image_prefix)
             if filename_index < 0:
                 return "" # Can't find image name
             
@@ -324,8 +329,8 @@ class CanonMCU(Sensor):
         if image_number == 10000:
             image_number = 1
         
-        # Combine back into valid file name but using camera name
-        image_name = "{0}_{1}.{2}".format(self.sensor_name, image_number, image_extension)
+        # Combine back into correct file name.
+        image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)
         
         return image_name
 
