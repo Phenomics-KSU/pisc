@@ -7,11 +7,13 @@ import logging
 # Sensors
 from sensors.irt_ue import IRT_UE
 from sensors.canon_mcu import CanonMCU
+from sensors.green_seeker import GreenSeeker # Added for Green Seeker
 from sensors.position_passer import PositionPasser
 from sensors.orientation_passer import OrientationPasser
 
 # Data handlers
 from data_handlers.csv_log import CSVLog
+
 
 def create_sensors(sensor_info, time_source, position_source, orientation_source, output_directory):
     '''
@@ -48,6 +50,11 @@ def create_sensors(sensor_info, time_source, position_source, orientation_source
             trigger_period = float(info[4])
             image_filename_prefix = info[5]
             sensor = CanonMCU(sensor_name, sensor_id, port, baud, trigger_period, image_filename_prefix, time_source, data_handlers=[csv_log])
+            
+        elif sensor_type == 'green_seeker': #Added for Green Seeker
+            port = info[2]
+            baud = int(info[3])
+            sensor = GreenSeeker(sensor_name, sensor_id, port, baud, time_source, data_handlers=[csv_log])
 
         elif sensor_type == 'position':
             sensor = PositionPasser(sensor_name, sensor_id, time_source, position_source, data_handlers=[csv_log])
