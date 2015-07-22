@@ -39,10 +39,18 @@ class GreenSeeker(Sensor):
                                         bytesize=serial.EIGHTBITS,
                                         timeout= self.read_timeout)
         
-    def close(self):
-        '''Close serial port.'''
-        if self.connection is not None:
+    def is_closed(self):
+        '''Return true if sensor is closed.'''
+        return self.connection is None or not self.connection.isOpen()
+        
+    def actually_close(self):
+        '''Actually closes serial port.  Called internally at a predefined time.'''
+        try:
             self.connection.close()
+        except (AttributeError, serial.SerialException):
+            pass
+        finally:
+            self.connection = None 
         
     def start(self):
         '''Enter infinite loop constantly reading data.'''
@@ -54,6 +62,9 @@ class GreenSeeker(Sensor):
                 
         while True:
             
+            if self.received_close_request:
+                break
+            
             if self.stop_reading:
                 # Don't want to take sensor readings right now.
                 time.sleep(0.1)
@@ -61,7 +72,10 @@ class GreenSeeker(Sensor):
             
             # Grab time here since it should, on average, represent the actual sensor measurement time.
             # If we grab it after the read/write we could have a context switch from I/O interactions.
-            time_of_reading = self.time_source.time                                              
+            time_of_reading = self.time_source.time
+            if time_of_reading <= 0:
+                time.sleep(.1)          
+                continue                                    
                       
             new_message = self.connection.readline()            
             
@@ -76,10 +90,12 @@ class GreenSeeker(Sensor):
                 
             ndvi = parsed_data[3]
             
-            # Pass ndvi onto all data handlers if we have a valid timestamp.
-            if time_of_reading > 0:
-                self.handle_data((time_of_reading, ndvi))
+            # Pass ndvi onto all data handlers if we have a valid timestamp.            
+            self.handle_data((time_of_reading, ndvi))
         
+        # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.        
+        self.received_close_request = False
+        self.actually_close()
                         
     def stop(self):
         '''Set flag to temporarily stop reading data. Thread safe.'''
