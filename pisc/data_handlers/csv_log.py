@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import csv
+from _ctypes import ArgumentError
 
 class CSVLog:
     '''
@@ -25,6 +26,7 @@ class CSVLog:
         
     def handle_data(self, sensor_type, sensor_id, data):
         '''Write data to file or buffer it depending on class settings. Data is a tuple.'''
+                
         if (data is None) or (len(data) == 0):
             # Create blank one element tuple so it's obvious in log that no data was received.
             data = ' ',
@@ -40,17 +42,24 @@ class CSVLog:
             self.file = open(self.file_name, 'wb')
             self.writer = csv.writer(self.file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             
-        if self.buffer_size > 1:
+        if len(self.buffer) > 0:
             # Write all the data we've been saving.
             self.writer.writerows(self.buffer)
             self.buffer = []
-            
+                    
         # Write current sample data.
         self.writer.writerow(data)
         
         # Make sure data gets written in case of power failure.
         self.file.flush()
+            
+    def handle_metadata(self, sensor_type, sensor_id, metadata): 
+        '''Store metadata in buffer to be written out the first time handle_data is called.'''
+        if len(metadata) == 0:
+            raise ArgumentError('Metadata must contain at least one element')
         
+        metadata[0] = '#' + str(metadata[0])
+        self.buffer.append(metadata)
         
     def terminate(self):
         '''Write any buffered data to file and then close file.'''

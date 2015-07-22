@@ -29,6 +29,14 @@ class Sensor:
         for data_handler in self.data_handlers:
             data_handler.handle_data(self.sensor_type, self.sensor_id, data)
             
+    def handle_metadata(self, metadata):
+        '''Pass the metadata (i.e. header information) on to each data handler.'''
+        for data_handler in self.data_handlers:
+            data_handler.handle_metadata(self.sensor_type, self.sensor_id, metadata)        
+            
+            
+            
+            
     def open(self):
         '''Open sensor interface.  Need to override.'''
         raise NotImplementedError

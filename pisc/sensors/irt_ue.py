@@ -60,7 +60,8 @@ class IRT_UE(Sensor):
         bytes_to_read = 2
         
         self.connection.flushInput()
-                
+        
+        self.handle_metadata(['time (s)','temperature (C)'])        
         while True:
             
             if self.received_close_request:

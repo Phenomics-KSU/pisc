@@ -96,7 +96,9 @@ class CanonMCU(Sensor):
             
         # Tell camera how often we want to take pictures. Convert to an integer in milliseconds because that's what MCU is expecting.
         self.change_trigger_period(int(self.trigger_period * 1000))
-            
+        
+        self.handle_metadata(['time (s)','file name'])
+               
         while True:
 
             if self.received_close_request:
