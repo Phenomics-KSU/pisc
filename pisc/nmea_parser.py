@@ -139,6 +139,11 @@ parse_maps = {
         ("sats_used", safe_int, 9),
         ("dop", safe_float, 10),
         ("height_above_ellipsoid", str, 11), # has prefix EHT
+        ],
+    "GST": [
+        # Added to provide fix accuracy data.
+        ("latitude_error",safe_float,6),
+        ("longitude_error",safe_float,7),
         ]
     }
 
