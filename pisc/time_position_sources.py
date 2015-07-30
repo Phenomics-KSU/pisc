@@ -95,8 +95,11 @@ class SimplePositionSource(object):
         self.event = threading.Event()
             
     def wait(self, timeout=None):
-        '''Return true when a new position reading is available. If false is returned then timed out.'''
-        return self.event.wait(timeout)
+        '''Return when either timeout occurs or new data is ready. A timeout of None is the same as infinity. 
+           The event.wait() method should return true if new data is ready, but due to a race condition some
+           times it returns false since the event flag is cleared.   The caller of this should check if the
+           utc_time of the new position has changed to determine if there really is new data.'''
+        self.event.wait(timeout)
             
     @property
     def position(self):
@@ -110,9 +113,9 @@ class SimplePositionSource(object):
         '''Set new position. Thread-safe.'''
         with self.lock:
             self._position = new_position
-            # reset event to wake up an waiting threads
-            self.event.set()
+            # reset event to wake up waiting threads
             self.event.clear()
+            self.event.set()
 
 class SimpleOrientationSource(object):
     '''
@@ -127,8 +130,11 @@ class SimpleOrientationSource(object):
         self.event = threading.Event()
             
     def wait(self, timeout=None):
-        '''Return true when a new orientation reading is available. If false is returned then timed out.'''
-        return self.event.wait(timeout)
+        '''Return when either timeout occurs or new data is ready. A timeout of None is the same as infinity. 
+            The event.wait() method should return true if new data is ready, but due to a race condition some
+            times it returns false since the event flag is cleared.   The caller of this should check if the
+            utc_time of the new position has changed to determine if there really is new data.'''
+        self.event.wait(timeout)
             
     @property
     def orientation(self):

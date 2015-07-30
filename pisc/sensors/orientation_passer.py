@@ -25,6 +25,8 @@ class OrientationPasser(Sensor):
         self.stop_passing = False # If true then sensor will passing data to handlers.
         
         self.is_open = False # internally flag to keep track of whether or not sensor is open.
+        
+        self.last_utc_time = 0 # last orientation timestamp that was passed onto data handlers.
 
     def open(self):
         '''Set internal open flag.'''
@@ -46,13 +48,18 @@ class OrientationPasser(Sensor):
                 time.sleep(0.1)
                 continue
             
-            # Block until new orientation data arrives.
-            if not self.orientation_source.wait(timeout=0.5):
-                continue # no new data so check for close request
+            # Block until new data arrives or we time out.
+            self.orientation_source.wait(timeout=0.5)
+
+            utc_time, frame, rotation_type, orientation = self.orientation_source.orientation
+
+            if utc_time == self.last_utc_time:
+                continue # never had new data.  Just timed out.
             
-            time, frame, rotation_type, orientation = self.orientation_source.orientation
             r1, r2, r3, r4 = orientation
-            self.handle_data((time, frame, rotation_type, r1, r2, r3, r4))
+            self.handle_data((utc_time, frame, rotation_type, r1, r2, r3, r4))
+        
+            self.last_utc_time = utc_time
         
         # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.    
         self.received_close_request = False

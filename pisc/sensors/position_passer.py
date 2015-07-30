@@ -25,6 +25,8 @@ class PositionPasser(Sensor):
         self.stop_passing = False # If true then sensor will passing data to handlers.
 
         self.is_open = False # internally flag to keep track of whether or not sensor is open.
+        
+        self.last_utc_time = 0 # last position timestamp that was passed onto data handlers.
 
     def open(self):
         '''Set internal open flag.'''
@@ -46,16 +48,21 @@ class PositionPasser(Sensor):
                 time.sleep(0.1)
                 continue
             
-            # Block until new position data arrives.
-            if not self.position_source.wait(timeout = 0.5):
-                continue # no new position data so check for close request
+            # Block until new position data arrives or we time out.
+            self.position_source.wait(timeout = 0.5)
+
+            utc_time, frame, position, zone = self.position_source.position
             
-            time, frame, position, zone = self.position_source.position
+            if utc_time == self.last_utc_time:
+                continue # never had new data.  Just timed out.
+
             x, y, z = position
             if zone.lower() == 'none':
-                self.handle_data((time, frame, x, y, z))
+                self.handle_data((utc_time, frame, x, y, z))
             else:
-                self.handle_data((time, frame, x, y, z, zone))
+                self.handle_data((utc_time, frame, x, y, z, zone))
+            
+            self.last_utc_time = utc_time
             
         # Good idea to close at end of thread so no matter what causes break the sensor won't hang when trying to close.    
         self.received_close_request = False
