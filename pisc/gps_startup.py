@@ -122,6 +122,9 @@ if __name__ == "__main__":
                 time.sleep(1.0/test_rate)
             
             nmea_string = nmea_source.readline().strip()
+            
+            # time (in seconds) that the most recent nmea message was read in.
+            message_read_time = time.time()
 
             if not check_nmea_checksum(nmea_string):
                 print "Received a sentence with an invalid checksum. Sentence was: {0}".format(repr(nmea_string))
@@ -194,10 +197,13 @@ if __name__ == "__main__":
                         print 'Current fix: {0}'.format(fix_types[fix])
                     fix = int(fix)
                     last_fix = fix
-                                     
+                            
+                    # Estimate time since message was read in.  Could be non-trivial depending on process scheduling.
+                    time_delay = time.time() - message_read_time
+    
                     for client in clients:
                         try:
-                            client.send_position(utc_time, 'LLA', latitude, longitude, altitude)
+                            client.send_position(utc_time, time_delay, 'LLA', latitude, longitude, altitude)
                         except socket.error, e:
                             print 'Socket error - Address: {} Message: {}'.format(client.address, e)
      

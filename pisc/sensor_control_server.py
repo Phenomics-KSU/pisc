@@ -35,27 +35,29 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
             self.time_source.time = time
         elif packet_type == 'p':
             time = float(fields[1])
-            frame = fields[2]
-            x = float(fields[3])
-            y = float(fields[4])
-            z = float(fields[5])
-            zone = fields[6]
-            self.time_source.time = time
+            time_delay = float(fields[2])
+            frame = fields[3]
+            x = float(fields[4])
+            y = float(fields[5])
+            z = float(fields[6])
+            zone = fields[7]
+            self.time_source.time = time + time_delay
             # Store reported time for position since that was the exact time it was measured.
             self.position_source.position = (time, frame, (x, y, z), zone)
         elif packet_type == 'o':
             time = float(fields[1])
-            frame = fields[2]
-            rotation_type = fields[3]
+            time_delay = float(fields[2])
+            frame = fields[3]
+            rotation_type = fields[4]
             try:
-                r1 = float(fields[4])
-                r2 = float(fields[5])
-                r3 = float(fields[6])
-                r4 = float(fields[7])
+                r1 = float(fields[5])
+                r2 = float(fields[6])
+                r3 = float(fields[7])
+                r4 = float(fields[8])
             except ValueError:
                 pass # Not all rotations have to be valid depending on rotation type.
  
-            self.time_source.time = time
+            self.time_source.time = time + time_delay
             # Store reported time for orientation since that was the exact time it was measured.
             self.orientation_source.orientation = (time, frame, rotation_type, (r1, r2, r3, r4))
         else:

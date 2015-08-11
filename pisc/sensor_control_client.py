@@ -16,13 +16,13 @@ class SensorControlClient:
         '''Send time over socket.'''
         self.sock.sendto("t,{}\n".format(time), self.address)
 
-    def send_position(self, time, frame, x, y, z, zone=None):
+    def send_position(self, time, time_delay, frame, x, y, z, zone=None):
         '''Send time and position in the specified frame.'''
-        self.sock.sendto("p,{},{},{},{},{},{}\n".format(time, frame, x, y, z, zone), self.address)
+        self.sock.sendto("p,{},{},{},{},{},{},{}\n".format(time, time_delay, frame, x, y, z, zone), self.address)
         
-    def send_orientation(self, time, frame, rotation_type, r1, r2, r3, r4=0):
+    def send_orientation(self, time, time_delay, frame, rotation_type, r1, r2, r3, r4=0):
         '''Send time and orientation in the specified frame.'''
-        self.sock.sendto("o,{},{},{},{},{},{},{}\n".format(time, frame, rotation_type, r1, r2, r3, r4), self.address)
+        self.sock.sendto("o,{},{},{},{},{},{},{},{}\n".format(time, time_delay, frame, rotation_type, r1, r2, r3, r4), self.address)
         
     def send_command_by_type(self, sensor_type, command):
         '''Send command to all sensors of specified type.'''
