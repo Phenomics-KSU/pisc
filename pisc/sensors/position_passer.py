@@ -28,6 +28,8 @@ class PositionPasser(Sensor):
         
         self.last_utc_time = 0 # last position timestamp that was passed onto data handlers.
 
+        self.max_closing_time = 3 # seconds
+
     def open(self):
         '''Set internal open flag.'''
         self.is_open = True

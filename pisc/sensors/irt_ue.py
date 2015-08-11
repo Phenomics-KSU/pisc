@@ -31,6 +31,8 @@ class IRT_UE(Sensor):
         self.stop_reading = False # If true then sensor will stop reading data.
         self.connection = None
         
+        self.max_closing_time = self.sample_period + 1
+        
     def open(self):
         '''Open serial port.'''
         # Setting 'read' timeout to same as sample period so we can re-submit request for data.

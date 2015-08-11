@@ -11,6 +11,7 @@ class Sensor:
         self.time_source = time_source
         self.data_handlers = data_handlers
         self.received_close_request = False
+        self.max_closing_time = 0 # maximum number of seconds sensor needs to wrap up before being closed.
 
     def get_type(self):
         '''Return type of sensor.'''
@@ -33,10 +34,7 @@ class Sensor:
         '''Pass the metadata (i.e. header information) on to each data handler.'''
         for data_handler in self.data_handlers:
             data_handler.handle_metadata(self.sensor_type, self.sensor_id, metadata)        
-            
-            
-            
-            
+
     def open(self):
         '''Open sensor interface.  Need to override.'''
         raise NotImplementedError
@@ -48,6 +46,13 @@ class Sensor:
     def is_closed(self):
         '''Return true once sensor is actually closed. Need to override.'''
         raise NotImplementedError
+    
+    def time_needed_to_close(self):
+        '''How many seconds sensor needs before being forcefully closed. Can override.'''
+        if self.is_closed():
+            return 0
+        else:
+            return self.max_closing_time
 
     def start(self):
         '''Start reading sensor data.  Need to override.'''

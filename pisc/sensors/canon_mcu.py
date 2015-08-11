@@ -53,6 +53,8 @@ class CanonMCU(Sensor):
         
         self.input_stream = '' # data buffer received from MCU that hasn't been used yet
         
+        self.max_closing_time = self.trigger_period + 2
+        
     def open(self):
         '''Open serial port.'''
         self.connection = serial.Serial(port=self.port,
@@ -65,7 +67,7 @@ class CanonMCU(Sensor):
     def is_closed(self):
         '''Return true if sensor is closed.'''
         return self.connection is None or not self.connection.isOpen()
-        
+
     def actually_close(self):
         '''Actually closes serial port.  Called internally at a predefined time.'''
         if self.connection is not None:

@@ -27,6 +27,8 @@ class OrientationPasser(Sensor):
         self.is_open = False # internally flag to keep track of whether or not sensor is open.
         
         self.last_utc_time = 0 # last orientation timestamp that was passed onto data handlers.
+        
+        self.max_closing_time = 3 # seconds
 
     def open(self):
         '''Set internal open flag.'''

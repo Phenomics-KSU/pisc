@@ -20,6 +20,9 @@ class SensorController:
         log = logging.getLogger()
 
         log.info('Starting up sensors:')
+        
+        failed_sensor_count = 0
+        failed_sensor_error_messages = ""
                 
         for sensor in self.sensors:
             log.info('ID: {2}  Type: {0}  Name: {1}'.format(sensor.get_type(), sensor.get_name(), sensor.get_id()))
@@ -27,7 +30,8 @@ class SensorController:
             try:    
                 sensor.open()
             except SerialException, e:
-                log.error('Failed to open sensor\n{0}'.format(e))
+                failed_sensor_count += 1
+                failed_sensor_error_messages += "\n{} (id-{}) {}".format(sensor.get_name(), sensor.get_id(), e)
                 continue
                         
             # Now that sensor is open we can start a new thread to read data.
@@ -36,18 +40,29 @@ class SensorController:
             t.setDaemon(True)
             self.threads.append(t)
             t.start()
+
+        if failed_sensor_count == 0:
+            log.info("\nAll sensors opened successfully.\n")
+        else:
+            log.warn("\nFailed to open {} sensors. Details:{}\n".format(failed_sensor_count, failed_sensor_error_messages))
             
     def close_sensors(self):
         '''Stop and close all sensors.'''
-        max_time_to_close = 3.0
         log = logging.getLogger()
         for sensor in self.sensors:
-            log.info('Closing sensor {}'.format(sensor.sensor_name))
+            
+            if sensor.is_closed():
+                log.info("Sensor {} already closed.".format(sensor.sensor_name))
+                continue
+            
+            time_requested_to_close = sensor.time_needed_to_close()
+            log.info('Giving sensor {} {} seconds to close.'.format(sensor.sensor_name, time_requested_to_close))
             first_close_time = time.time()
             sensor.close()
             while not sensor.is_closed():
-                if time.time() - first_close_time > max_time_to_close:
-                    log.warn('Couldn\'t close sensor in {} seconds...moving to next sensor.'''.format(max_time_to_close))
+                if time.time() - first_close_time > time_requested_to_close:
+                    log.warn('Couldn\'t close sensor...moving to next sensor.')
                     break
                 time.sleep(0.2)
+
                        
