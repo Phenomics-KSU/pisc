@@ -258,6 +258,8 @@ class CanonMCU(Sensor):
                 #print 'Goes with ' + str(self.last_image_filename)
                 if self.last_image_filename is not None:
                     new_images.append((utc_time, self.last_image_filename))
+                    # just used filename so reset it so it doesn't get used twice if next parse fails.
+                    self.last_image_filename = None
                 self.image_count += 1
 
         return new_images
@@ -325,13 +327,6 @@ class CanonMCU(Sensor):
             image_number = int(image_number)
         except ValueError:
             return "" # Image number not valid so can't produce valid image name
-
-        # Need to increment image number since the event dump where parsing if for the PREVIOUS image
-        image_number += 1
-        
-        # Check for rollover.  In this case 10000 is actually 0001.
-        if image_number == 10000:
-            image_number = 1
         
         # Combine back into correct file name.
         image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)

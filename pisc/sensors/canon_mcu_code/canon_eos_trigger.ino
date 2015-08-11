@@ -50,8 +50,8 @@ static bool synced_to_client = false; // becomes true when first receive sync co
 static uint32_t sync_time = 0; // MCU time that the sync command was received.  In milliseconds.
 static uint32_t trigger_period = 0; // Period in milliseconds before triggering camera.  If set to 0 then periodic triggering is disabled.
 static uint32_t previous_capture_time = 0; // Time in milliseconds of the last image.  Not the one that was just taken.
-static uint32_t last_capture_attempt = 0; // Time in milliseconds that the camera was attempted to be triggered.
-static uint32_t image_count = 0;
+static uint32_t last_loop_end_time = 0; // Time in milliseconds that the last camera triggering loop finished at.
+static uint32_t successive_image_count = 0; // How many images have been captured without failure or time being re-synced.
 const int minimum_loop_time = 750; // Ensures no errors from over triggering.
 
 // Read all bytes from serial buffer.
@@ -66,7 +66,9 @@ void clearSerialInputBuffer(void)
 // Trigger camera once command is received. Continuously called when device is connected and initialized.
 void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
 {
-    int milliseconds_since_last_loop = millis() - last_capture_attempt;
+    EOSEventDump hex; // used for event dump.
+    
+    int milliseconds_since_last_loop = millis() - last_loop_end_time;
     
     if (milliseconds_since_last_loop < minimum_loop_time)
     {
@@ -89,52 +91,61 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
     // Reset flag so we don't keep triggering.
     receivedTriggerCommand = false;
     
+    // If we've already taken a picture then send back event dump which will contain that last filename.
+    // Safer to do here than after taking a picture since this ensures the max elapsed time before event dump.
+    if (successive_image_count >= 1)
+    {
+        // Send back image filename of the picture we took last time (and also a bunch of other data)
+        Serial.print(statusStartFrame);
+        Serial.print("dump-");
+        eos.EventCheck(&hex);
+        Serial.println(statusEndFrame);
+        
+        // Send back elapsed time of previous image since that's what the filename in the event dump is for.
+        // Even though shouldn't happen make sure last capture time is greater than sync time to avoid rollover right after sync.
+        uint32_t time_since_sync = 0;
+        if (previous_capture_time > sync_time)
+        {
+            time_since_sync = previous_capture_time - sync_time; 
+        }
+        printTimeMessage(time_since_sync);
+  
+    }
+    else // haven't taken a successful picture yet.
+    {
+        // dump any old information so old filenames don't get sent out next dump.
+        // Don't wrap in frame so client doesn't pick it up as an actual event dump.
+        // Delay afterwards to give camera some time before triggering.  Otherwise camera can get upset.
+        Serial.print("trash-");
+        eos.EventCheck(&hex);
+        delay(300);
+    }
+    
     uint32_t capture_time = millis();
     
     uint16_t ptp_return = eos.Capture();
-   
-    // Add a delay before calling event dump below so camera can actually take image. 
-    // If this is too short the event dump might be for the last image (not the one we just took).
-    delay(550); 
-    
+
     // Clear any previous requests for triggering.  This allows client to send multiple requests at once to ensure one gets received.
     //clearSerialInputBuffer(); // KLM disabled because different types of commands are being sent now.
     
     if (ptp_return == PTP_RC_OK)
     {
-        // Send back last image name (not the one we just took) and also a bunch of other data.
-        Serial.print(statusStartFrame);
-        Serial.print("dump-");
-        EOSEventDump hex;
-        eos.EventCheck(&hex);
-        Serial.println(statusEndFrame);
-        
-        // Send back elapsed time of previous image since that's what the filename in the event dump is for.
-        uint32_t time_since_sync = 0;
-        if (capture_time > sync_time)
-        {
-            time_since_sync = capture_time - sync_time; // avoid rollover right after sync.
-        }
-        printTimeMessage(time_since_sync);
+        successive_image_count++;
         
         // Update previous capture so can use it for next time.
-        previous_capture_time = capture_time;
-        
-        if (image_count <= 1)
-        {
-            // Give camera more time for first couple images.
-            //delay(2000);
-        }
-        
-        image_count++;
+        previous_capture_time = capture_time;  
     }
     else
     {
         // Send failure status report.
         printStatusMessage("Trigger failure: " + String(ptp_return, HEX));
+        
+        // Reset count since we had a failure. 
+        successive_image_count = 0;
     }
     
-    last_capture_attempt = capture_time;
+    last_loop_end_time = millis();
+
 }
 
 // Send 'state' text back over serial port if we're trying to take a picture.  Should be called from non-triggering states.
@@ -231,6 +242,7 @@ void loop()
                 printStatusMessage("Resynced");
             }
             synced_to_client = true;
+            successive_image_count = 0; // reset count so will wait at least one picture before sending back image name / time.
             Serial.print('a'); // acknowledge
         }
         else if (inByte == 't') // trigger command
