@@ -121,10 +121,12 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
         delay(300);
     }
     
-    uint32_t capture_time = millis();
-    
     uint16_t ptp_return = eos.Capture();
 
+    // Need to record time after calling capture() (instead of before) since theres' a 30-60 ms delay which through testing seems to more accurately
+    // represent the time the image was captured.
+    uint32_t capture_time = millis();
+    
     // Clear any previous requests for triggering.  This allows client to send multiple requests at once to ensure one gets received.
     //clearSerialInputBuffer(); // KLM disabled because different types of commands are being sent now.
     
