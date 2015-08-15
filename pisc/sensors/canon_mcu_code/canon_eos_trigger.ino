@@ -207,7 +207,7 @@ void readSerialLine(char * newLineBuffer, int max_length)
 
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(57600);
 
     if (usb.Init() == -1)
     {

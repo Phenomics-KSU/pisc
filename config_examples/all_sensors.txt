@@ -5,5 +5,5 @@ version, 0.0
 position,    position,
 orientation, orientation,
 irt_ue,      irt_ue_4800101,          COM12, 115200, 10
-canon_mcu,   canon_t5i_192032019850,  COM25, 115200, 1, C01
+canon_mcu,   canon_t5i_192032019850,  COM25, 57600, 1, C01
 green_seeker, green_seeker1,		COM13, 38400, 
