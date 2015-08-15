@@ -67,7 +67,7 @@ class PreciseTimeSource(object):
 
 class RelativePreciseTimeSource(PreciseTimeSource):
     '''
-    Base all future times off the first time.  Protects against negative times between sensor readings.
+    Base all future times off the first time.  Protects against negative time durations between sensor readings.
     '''
     @property
     def time(self):
@@ -77,10 +77,19 @@ class RelativePreciseTimeSource(PreciseTimeSource):
     @time.setter
     def time(self, new_time):
         '''Set new time only if hasn't been set yet. Thread-safe.'''
-        with self.lock:
-            if self._time == self._default_time:
+        if self._time == self._default_time:
+            with self.lock:
                 self.last_set_time = time.time()
                 self._time = new_time
+
+    def set_time_with_ref(self, new_time, ref_time):
+        '''Set new time only if hasn't been set yet. Allows a reference time (ref_time) which 
+           comes from calling time.time() to be specified which then the elapsed time since 
+           ref_time is taken into account once the lock is acquired.  Thread-safe.'''
+        if self._time == self._default_time:
+            with self.lock:
+                self.last_set_time = time.time()
+                self._time = new_time + (time.time() - ref_time)
 
 class SimplePositionSource(object):
     '''

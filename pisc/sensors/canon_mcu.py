@@ -148,12 +148,23 @@ class CanonMCU(Sensor):
          can run at a constant rate since the OS isn't real-time.
          
          Notes: Time source must have a valid non-zero time before calling this method.
-        '''
+        '''        
+        sync_max_time = 0.025 # max number of seconds that can elapse during sync process.
         sync_successful = False
         while not sync_successful:
             # Grab current UTC time so we can use relative MCU times when images come back.
             self.synced_utc_time = self.time_source.time
             sync_successful = self.send_command(self.sync_command, command_description='sync', expected_ack = self.sync_ack_command, ack_timeout = 1)
+            
+            if sync_successful:
+                elapsed_time_since_sync = self.synced_utc_time - self.time_source.time
+                
+                if elapsed_time_since_sync > sync_max_time:
+                    logging.getLogger().warn("{} seconds elapsed during sync to {} which is higher than the max of {}. Retrying.".format(elapsed_time_since_sync, self.sensor_name, sync_max_time))
+                    sync_successful = False # try to re-sync
+                else:
+                    # Add on half of the sync duration to account for latency due to syncing to MCU.
+                    self.synced_utc_time += elapsed_time_since_sync / 2.0
             
     def change_trigger_period(self, new_trigger_period):
         '''Change how often camera is taking pictures.  Should be in milliseconds.  Set to zero to stop taking images.'''
@@ -260,7 +271,7 @@ class CanonMCU(Sensor):
                     new_images.append((utc_time, self.last_image_filename))
                     # just used filename so reset it so it doesn't get used twice if next parse fails.
                     self.last_image_filename = None
-                self.image_count += 1
+                    self.image_count += 1
 
         return new_images
     
@@ -329,7 +340,7 @@ class CanonMCU(Sensor):
             return "" # Image number not valid so can't produce valid image name
         
         # Combine back into correct file name.
-        image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)
+        #image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)
         
         return image_name
 

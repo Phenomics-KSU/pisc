@@ -21,6 +21,7 @@ if __name__ == "__main__":
     default_rate = 10 # Hz.  Rate to read messages out of test file.
     default_gps_baud = 9600 
     default_host = '{0} {1}'.format(default_server_host, default_server_port) 
+    default_require_sync = 'true'
         
     # Define command line arguments.
     argparser = argparse.ArgumentParser(description='Pass position/time from GPS to PISC server.')
@@ -32,6 +33,7 @@ if __name__ == "__main__":
     argparser.add_argument('-b', '--baud', default=default_gps_baud, help='Baud rate of serial port. Default {0}.'.format(default_gps_baud))
     argparser.add_argument('-s', '--required_fix', default= 'None', help='Required fix quality indicator in GGA message.')
     argparser.add_argument('-z', '--required_precision', default= -1, help='Set the max standard deviation of latitude/longitude error for usable data.')
+    argparser.add_argument('-t', '--require_sync', default=default_require_sync, help='If true then each client will require a time sync. Recommended to be true unless using test file. Default {}'.format(default_require_sync))
     args = argparser.parse_args()
 
     # Dictionary of fix types
@@ -75,6 +77,7 @@ if __name__ == "__main__":
     required_fix = args.required_fix
     required_precision = float(args.required_precision)
     test_rate = float(args.test_rate)
+    require_sync = args.require_sync.lower() == 'true'
     
     if test_rate <= 0.0:
         print 'Invalid test rate {0}. Changing to {1}.'.format(test_rate, default_rate)
@@ -110,7 +113,7 @@ if __name__ == "__main__":
         client = SensorControlClient(host_name, port)
         clients.append(client)
 
-    send_counter = 0 # number of position/time messages sent to by client
+    send_counter = 0 # number of position/time messages sent 
     display_count = 10 # how many messages to send before displaying feedback character
     
     print 'Each period represents {0} sent messages.'.format(display_count)
@@ -197,15 +200,22 @@ if __name__ == "__main__":
                         print 'Current fix: {0}'.format(fix_types[fix])
                     fix = int(fix)
                     last_fix = fix
-                            
-                    # Estimate time since message was read in.  Could be non-trivial depending on process scheduling.
-                    time_delay = time.time() - message_read_time
     
                     for client in clients:
-                        try:
-                            client.send_position(utc_time, time_delay, 'LLA', latitude, longitude, altitude)
-                        except socket.error, e:
-                            print 'Socket error - Address: {} Message: {}'.format(client.address, e)
+                        # Estimate time since message was read in.  Could be non-trivial depending on process scheduling.
+                        time_delay = time.time() - message_read_time
+                        if require_sync and not client.synced:
+                            try:
+                                sync_successful = client.send_time_sync(utc_time + time_delay)
+                                if sync_successful:
+                                    print "Synced to {}".format(client.address[0])
+                            except socket.error, e:
+                                pass # if client isn't running yet then this will spam output if error is printed. 
+                        else:
+                            try:
+                                client.send_position(utc_time, time_delay, 'LLA', latitude, longitude, altitude)
+                            except socket.error, e:
+                                print 'Socket error - Address: {} Message: {}'.format(client.address, e)
      
                     # Printout period once for every 'display_count' messages for constant feedback that messages are being sent.
                     send_counter += 1

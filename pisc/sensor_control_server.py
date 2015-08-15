@@ -4,6 +4,11 @@ import sys
 import socket
 import SocketServer
 import logging
+import traceback
+import time
+
+def mean(l):
+    return float(sum(l)) / max(len(l),1)
 
 class SocketHandlerUDP(SocketServer.BaseRequestHandler):
     ''' The RequestHandler class for our server. '''
@@ -18,34 +23,49 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
     # Used to notify user that messages are being received.
     first_message_received = False
     
+    # Time-stamped sync messages originally received from client.
+    uncorrected_sync_messages = []
+    
+    # Sync messages that have been corrected to account for latency.
+    sync_messages = []
+    
+    # True if received a sync message, but haven't successfully synced yet.
+    syncing = False
+    
     def handle(self):
         '''Process packet and pass data to its corresponding object.'''
         packet = self.request[0].strip()
-        #socket = self.request[1]
+        socket = self.request[1]
         
-        self.process_packet(packet)
+        self.process_packet(packet, socket)
 
-    def process_packet(self, data):
+    def process_packet(self, data, socket):
         '''Parse packet and pass data to its corresponding object.'''
         fields = data.split(',')
         packet_type = fields[0]
         
+        if not SocketHandlerUDP.first_message_received:
+            SocketHandlerUDP.first_message_received = True
+            logging.getLogger().info('Messages being received.')
+        
         if packet_type == 't':
-            time = float(fields[1])
-            self.time_source.time = time
+            utc_time = float(fields[1])
+            self.time_source.time = utc_time
+            
         elif packet_type == 'p':
-            time = float(fields[1])
+            utc_time = float(fields[1])
             time_delay = float(fields[2])
             frame = fields[3]
             x = float(fields[4])
             y = float(fields[5])
             z = float(fields[6])
             zone = fields[7]
-            self.time_source.time = time + time_delay
+            self.time_source.time = utc_time + time_delay
             # Store reported time for position since that was the exact time it was measured.
-            self.position_source.position = (time, frame, (x, y, z), zone)
+            self.position_source.position = (utc_time, frame, (x, y, z), zone)
+            
         elif packet_type == 'o':
-            time = float(fields[1])
+            utc_time = float(fields[1])
             time_delay = float(fields[2])
             frame = fields[3]
             rotation_type = fields[4]
@@ -56,16 +76,63 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
                 r4 = float(fields[8])
             except ValueError:
                 pass # Not all rotations have to be valid depending on rotation type.
- 
-            self.time_source.time = time + time_delay
+            self.time_source.time = utc_time + time_delay
             # Store reported time for orientation since that was the exact time it was measured.
-            self.orientation_source.orientation = (time, frame, rotation_type, (r1, r2, r3, r4))
+            self.orientation_source.orientation = (utc_time, frame, rotation_type, (r1, r2, r3, r4))
+            
+        elif packet_type == 'sync1':
+            if not SocketHandlerUDP.syncing:
+                SocketHandlerUDP.syncing = True
+                logging.getLogger().info('Syncing')
+            sync_id = int(fields[1])
+            utc_time = float(fields[2])
+            system_time = time.time()
+            SocketHandlerUDP.uncorrected_sync_messages.append({"id":sync_id, "utc_time":utc_time, "sys_time":system_time})
+            # Ack sync message so client can calculate round trip time (RTT)
+            socket.sendto(str(sync_id), self.client_address)
+            
+        elif packet_type == 'sync2':
+            sync_successful = False
+            sync_id = int(fields[1])
+            rtt = float(fields[2]) # round trip time
+            estimated_latency = rtt / 2.0
+            matching_messages = [message for message in SocketHandlerUDP.uncorrected_sync_messages if message['id'] == sync_id]
+            if len(matching_messages) == 1:
+                matching_message = matching_messages[0]
+                # Add in latency now that we know it.
+                matching_message['utc_time'] += estimated_latency
+                SocketHandlerUDP.sync_messages.append(matching_message)
+                SocketHandlerUDP.uncorrected_sync_messages.remove(matching_message)
+
+                if len(SocketHandlerUDP.sync_messages) >= 10:
+                    current_time = time.time()
+                    # Take into account elapsed time since sync messages were received.  These should (hopefully) all be close to the same time now.
+                    current_sync_times = [(m['utc_time'] + (current_time - m['sys_time'])) for m in SocketHandlerUDP.sync_messages]
+                    
+                    avg_time = mean(current_sync_times)
+                    #avg_offset = mean([abs(t-avg_time) for t in current_sync_times])
+                    max_offset = max([abs(t-avg_time) for t in current_sync_times])
+
+                    sync_successful = max_offset < 0.01
+                    
+                    if sync_successful:
+                        try:
+                            self.time_source.set_time_with_ref(avg_time, current_time)
+                        except AttributeError:
+                            # Fall back on setting time property.
+                            self.time_source.time = avg_time
+                        logging.getLogger().info('Success')
+
+                    else:
+                        SocketHandlerUDP.sync_messages = []
+                        # Print additional period to show that it's still trying to sync
+                        sys.stdout.write('.')
+                        sys.stdout.flush()
+                        
+            socket.sendto(str(sync_successful).lower(), self.client_address)
+
         else:
             logging.getLogger().warning('Unhandled packet of type {0}'.format(packet_type))
-
-        if not SocketHandlerUDP.first_message_received:
-            SocketHandlerUDP.first_message_received = True
-            logging.getLogger().info('Messages being received.')
 
 class UDPServerPass(SocketServer.UDPServer):
     '''Override default error handling of only printing exception trace.'''
@@ -74,11 +141,13 @@ class UDPServerPass(SocketServer.UDPServer):
         SocketServer.UDPServer.__init__(self, *args, **kwargs)
     def handle_error(self, request, client_address):
         '''Called when an exception occurs in handle()'''
-        exception_type, value = sys.exc_info()[:2]
+        exception_type, value, error_traceback = sys.exc_info()
         if exception_type is KeyboardInterrupt:
             raise KeyboardInterrupt
         else:
-            print 'Exception raised when handling UDP packet:\n{0} - {1}'.format(exception_type, value)
+            for line in traceback.format_tb(error_traceback):
+                print line.strip()
+            print 'Exception raised when handling UDP packet:\n{} - {}'.format(exception_type, value)
 
 class SensorControlServer:
     
