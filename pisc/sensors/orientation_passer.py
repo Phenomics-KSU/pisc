@@ -58,8 +58,9 @@ class OrientationPasser(Sensor):
             if utc_time == self.last_utc_time:
                 continue # never had new data.  Just timed out.
             
+            # TODO decide if want to pass frame and rotation type or just standardized on a single orientation representation.
             r1, r2, r3, r4 = orientation
-            self.handle_data((utc_time, frame, rotation_type, r1, r2, r3, r4))
+            self.handle_data((utc_time, r1, r2, r3, r4, frame, rotation_type))
         
             self.last_utc_time = utc_time
         

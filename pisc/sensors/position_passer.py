@@ -60,9 +60,9 @@ class PositionPasser(Sensor):
 
             x, y, z = position
             if zone.lower() == 'none':
-                self.handle_data((utc_time, frame, x, y, z))
+                self.handle_data((utc_time, x, y, z, frame))
             else:
-                self.handle_data((utc_time, frame, x, y, z, zone))
+                self.handle_data((utc_time, x, y, z, zone, frame))
             
             self.last_utc_time = utc_time
             
