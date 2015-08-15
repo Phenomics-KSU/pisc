@@ -157,8 +157,8 @@ class CanonMCU(Sensor):
             sync_successful = self.send_command(self.sync_command, command_description='sync', expected_ack = self.sync_ack_command, ack_timeout = 1)
             
             if sync_successful:
-                elapsed_time_since_sync = self.synced_utc_time - self.time_source.time
-                
+                elapsed_time_since_sync = self.time_source.time - self.synced_utc_time
+      
                 if elapsed_time_since_sync > sync_max_time:
                     logging.getLogger().warn("{} seconds elapsed during sync to {} which is higher than the max of {}. Retrying.".format(elapsed_time_since_sync, self.sensor_name, sync_max_time))
                     sync_successful = False # try to re-sync
