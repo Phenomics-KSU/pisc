@@ -55,18 +55,23 @@ if __name__ == "__main__":
     if sys.float_info.epsilon > max_required_precision:
         log.critical('System doesn\'t support required precision. Time\'s will not be correct. Aborting.')
         sys.exit(1)
+        
+    # Default time (in milliseconds) to use for threshold when syncing time on startup.  Smaller is stricter.
+    default_sync_time = 15
     
     # Define necessary and optional command line arguments.
     argparser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
     argparser.add_argument('config_file', help='path to sensor configuration file')
-    argparser.add_argument('-n', '--host', default=default_server_host, help='Server host name. Default {0}.'.format(default_server_host))
-    argparser.add_argument('-p', '--port', default=default_server_port, help='Server port number. Default {0}.'.format(default_server_port))
+    argparser.add_argument('-n', '--host', default=default_server_host, help='Server host name. Default {}.'.format(default_server_host))
+    argparser.add_argument('-p', '--port', default=default_server_port, help='Server port number. Default {}.'.format(default_server_port))
+    argparser.add_argument('-s', '--sync_thresh', default=default_sync_time, help='Time (in milliseconds) to use for threshold when syncing time on startup.  Smaller is stricter. Default {}.'.format(default_sync_time))
     args = argparser.parse_args()
 
     # Validate command line arguments.
     config_file = args.config_file
     port = int(args.port)
     host = args.host
+    sync_time_thresh = float(args.sync_thresh) / 1000.0 # convert from ms to seconds
     if not os.path.isfile(config_file):
         log.error('The configuration file could not be found:\'{0}\''.format(config_file))
         sys.exit(1)
@@ -95,7 +100,7 @@ if __name__ == "__main__":
     sensor_controller.startup_sensors()
 
     log.info('Server listening on {0}:{1}'.format(host, port))
-    server = SensorControlServer(sensor_controller, time_source, position_source, orientation_source, host, port)
+    server = SensorControlServer(sensor_controller, time_source, position_source, orientation_source, sync_time_thresh, host, port)
 
     # This will keep running until the program is interrupted with Ctrl-C
     try:

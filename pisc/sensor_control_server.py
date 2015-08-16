@@ -19,6 +19,7 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
     time_source = None
     position_source = None
     orientation_source = None
+    sync_time_thresh = None
     
     # Used to notify user that messages are being received.
     first_message_received = False
@@ -101,10 +102,11 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
                 matching_message = matching_messages[0]
                 # Add in latency now that we know it.
                 matching_message['utc_time'] += estimated_latency
+                matching_message['latency'] = estimated_latency
                 SocketHandlerUDP.sync_messages.append(matching_message)
                 SocketHandlerUDP.uncorrected_sync_messages.remove(matching_message)
 
-                if len(SocketHandlerUDP.sync_messages) >= 10:
+                if len(SocketHandlerUDP.sync_messages) >= 5:
                     current_time = time.time()
                     # Take into account elapsed time since sync messages were received.  These should (hopefully) all be close to the same time now.
                     current_sync_times = [(m['utc_time'] + (current_time - m['sys_time'])) for m in SocketHandlerUDP.sync_messages]
@@ -113,7 +115,7 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
                     #avg_offset = mean([abs(t-avg_time) for t in current_sync_times])
                     max_offset = max([abs(t-avg_time) for t in current_sync_times])
 
-                    sync_successful = max_offset < 0.01
+                    sync_successful = max_offset < self.sync_time_thresh
                     
                     if sync_successful:
                         try:
@@ -121,8 +123,12 @@ class SocketHandlerUDP(SocketServer.BaseRequestHandler):
                         except AttributeError:
                             # Fall back on setting time property.
                             self.time_source.time = avg_time
-                        logging.getLogger().info('Success')
-
+                        # log sync stats
+                        latencies = [m['latency'] for m in SocketHandlerUDP.sync_messages]
+                        logging.getLogger().info('Success\nLatency {} / {} thresh {} / {}'.format(int(mean(latencies)*1000),
+                                                                                                  int(max(latencies)*1000),
+                                                                                                  int(max_offset*1000),
+                                                                                                  int(self.sync_time_thresh*1000)))
                     else:
                         SocketHandlerUDP.sync_messages = []
                         # Print additional period to show that it's still trying to sync
@@ -151,13 +157,14 @@ class UDPServerPass(SocketServer.UDPServer):
 
 class SensorControlServer:
     
-    def __init__(self, sensor_controller, t_source, pos_source, orient_source, host, port):
+    def __init__(self, sensor_controller, t_source, pos_source, orient_source, sync_thresh, host, port):
         # Subclass handler to use passed in sensor controller.  Weird, but I couldn't find a better way to do it.
         class SocketHandlerUDPWithController(SocketHandlerUDP):
                 controller = sensor_controller
                 time_source = t_source
                 position_source = pos_source
                 orientation_source = orient_source
+                sync_time_thresh = sync_thresh
 
         # Create the server at the specified address.
         self.server = UDPServerPass((host, port), SocketHandlerUDPWithController, bind_and_activate=False)
