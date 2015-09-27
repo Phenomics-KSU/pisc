@@ -182,18 +182,23 @@ void printTimeMessage(uint32_t time)
 }
 
 // Return new line terminated string from serial port. Newline not included.
-void readSerialLine(char * newLineBuffer, int max_length)
+void readSerialLine(char * newLineBuffer, unsigned int max_length)
 {
-    int rx_index = 0;
+    unsigned int rx_index = 0;
+    
+    if (max_length == 0) { return; }
+    
     while (true)
     {
-        if (Serial.available())
+        if (rx_index >= max_length)
         {
-            if (rx_index >= (max_length-1))
-            {
-                break; // no more room in buffer
-            }
-            
+            // No more room in buffer. Ensure output is null terminated.
+            newLineBuffer[max_length-1] = '\0';
+            break; 
+        }
+        
+        if (Serial.available())
+        {            
             byte inChar = Serial.read();
             
             newLineBuffer[rx_index] = inChar;
@@ -239,10 +244,6 @@ void loop()
         if (inByte == 's') // sync command
         {
             sync_time = millis();
-            if (synced_to_client)
-            {
-                printStatusMessage("Resynced");
-            }
             synced_to_client = true;
             successive_image_count = 0; // reset count so will wait at least one picture before sending back image name / time.
             Serial.print('a'); // acknowledge
@@ -255,22 +256,21 @@ void loop()
         {
             char period_buffer[20];
             readSerialLine(period_buffer, 20);
-            //Serial.print(String(period_buffer));
-            //printStatusMessage("Trigger period received:  " + String(period_buffer));
             int new_period = atoi(period_buffer);
-            if (new_period != trigger_period)
-            {
-                printStatusMessage("New trigger period: " + String(new_period));
-            }
+            
             if (new_period != 0 && new_period < minimum_loop_time)
             {
                 printStatusMessage("New period of " + String(new_period) + " is less than minimum loop time of " + String(minimum_loop_time));
             }
             else // new trigger time is valid
             {
+                if (new_period != trigger_period)
+                {
+                    printStatusMessage("New trigger period: " + String(new_period));
+                }
+                
                 trigger_period = new_period;
             }
-            //Serial.print(String(new_period)); // ack
         }
         else 
         {

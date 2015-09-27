@@ -149,8 +149,9 @@ class CanonMCU(Sensor):
          
          Notes: Time source must have a valid non-zero time before calling this method.
         '''        
-        sync_max_time = 0.025 # max number of seconds that can elapse during sync process.
+        sync_max_time = 0.020 # max number of seconds that can elapse during sync process.
         sync_successful = False
+        logging.getLogger().warn("Syncing to {}".format(self.sensor_name))
         while not sync_successful:
             # Grab current UTC time so we can use relative MCU times when images come back.
             self.synced_utc_time = self.time_source.time
@@ -160,11 +161,12 @@ class CanonMCU(Sensor):
                 elapsed_time_since_sync = self.time_source.time - self.synced_utc_time
       
                 if elapsed_time_since_sync > sync_max_time:
-                    logging.getLogger().warn("{} seconds elapsed during sync to {} which is higher than the max of {}. Retrying.".format(elapsed_time_since_sync, self.sensor_name, sync_max_time))
+                    #logging.getLogger().warn("{} seconds elapsed during sync to {} which is higher than the max of {}. Retrying.".format(elapsed_time_since_sync, self.sensor_name, sync_max_time))
                     sync_successful = False # try to re-sync
                 else:
                     # Add on half of the sync duration to account for latency due to syncing to MCU.
                     self.synced_utc_time += elapsed_time_since_sync / 2.0
+                    #logging.getLogger().warn("Synced to {} in {} ms.".format(self.sensor_name, elapsed_time_since_sync * 1000 / 2.0))
             
     def change_trigger_period(self, new_trigger_period):
         '''Change how often camera is taking pictures.  Should be in milliseconds.  Set to zero to stop taking images.'''
