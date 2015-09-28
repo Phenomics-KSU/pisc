@@ -40,6 +40,9 @@ class OrientationPasser(Sensor):
         
     def start(self):
         '''Pass orientation data to handlers when it becomes available.'''
+        
+        self.handle_metadata(['time (s)', 'roll (rad)', 'pitch (rad)', 'yaw (rad)'])
+        
         while True:
             
             if self.received_close_request:
@@ -53,14 +56,13 @@ class OrientationPasser(Sensor):
             # Block until new data arrives or we time out.
             self.orientation_source.wait(timeout=0.5)
 
-            utc_time, frame, rotation_type, orientation = self.orientation_source.orientation
+            utc_time, rpy = self.orientation_source.orientation
 
             if utc_time == self.last_utc_time:
                 continue # never had new data.  Just timed out.
-            
-            # TODO decide if want to pass frame and rotation type or just standardized on a single orientation representation.
-            r1, r2, r3, r4 = orientation
-            self.handle_data((utc_time, r1, r2, r3, r4, frame, rotation_type))
+
+            roll, pitch, yaw = rpy
+            self.handle_data((utc_time, roll, pitch, yaw))
         
             self.last_utc_time = utc_time
         

@@ -40,6 +40,9 @@ class PositionPasser(Sensor):
         
     def start(self):
         '''Pass position data to handlers when it becomes available.'''
+        
+        self.handle_metadata(['time (s)', 'x', 'y', 'z'])
+        
         while True:
             
             if self.received_close_request:
@@ -53,16 +56,16 @@ class PositionPasser(Sensor):
             # Block until new position data arrives or we time out.
             self.position_source.wait(timeout = 0.5)
 
-            utc_time, frame, position, zone = self.position_source.position
+            utc_time, position, zone = self.position_source.position
             
             if utc_time == self.last_utc_time:
                 continue # never had new data.  Just timed out.
 
             x, y, z = position
             if zone.lower() == 'none':
-                self.handle_data((utc_time, x, y, z, frame))
+                self.handle_data((utc_time, x, y, z))
             else:
-                self.handle_data((utc_time, x, y, z, zone, frame))
+                self.handle_data((utc_time, x, y, z, zone))
             
             self.last_utc_time = utc_time
             

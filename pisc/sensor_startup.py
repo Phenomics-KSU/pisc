@@ -8,16 +8,13 @@ import serial
 import time
 import logging
 
-from sensor_control_server import SensorControlServer
+from gps_client import GPSClient
 from sensor_controller import SensorController
 from config_parsing import parse_config_file
 from sensor_creation import create_sensors
 from time_position_sources import *
 from version import current_pisc_version, current_config_version
-
-# Default command line argument values.  Global so GPS startup can use as default client.
-default_server_host = socket.gethostname()
-default_server_port = 5000
+from gps_startup import default_server_host, default_server_port
 
 if __name__ == "__main__":
     '''
@@ -64,14 +61,15 @@ if __name__ == "__main__":
     argparser.add_argument('config_file', help='path to sensor configuration file')
     argparser.add_argument('-n', '--host', default=default_server_host, help='Server host name. Default {}.'.format(default_server_host))
     argparser.add_argument('-p', '--port', default=default_server_port, help='Server port number. Default {}.'.format(default_server_port))
-    argparser.add_argument('-s', '--sync_thresh', default=default_sync_time, help='Time (in milliseconds) to use for threshold when syncing time on startup.  Smaller is stricter. Default {}.'.format(default_sync_time))
+    argparser.add_argument('-s', '--sync_thresh', default=default_sync_time, help='Time (in milliseconds) to use for threshold when syncing time. Smaller is stricter. If not greater than 0 then will disable syncing. Default {}.'.format(default_sync_time))
     args = argparser.parse_args()
 
     # Validate command line arguments.
     config_file = args.config_file
-    port = int(args.port)
     host = args.host
+    port = int(args.port)
     sync_time_thresh = float(args.sync_thresh) / 1000.0 # convert from ms to seconds
+    sync_required = (sync_time_thresh > 0)
     if not os.path.isfile(config_file):
         log.error('The configuration file could not be found:\'{0}\''.format(config_file))
         sys.exit(1)
@@ -92,26 +90,24 @@ if __name__ == "__main__":
     
     sensors = create_sensors(sensor_info, time_source, position_source, orientation_source, output_directory)
     
-    log.info('Created {0} sensors.'.format(len(sensors)))
+    log.info('Created {} sensors.'.format(len(sensors)))
 
     sensor_controller = SensorController(sensors)
 
     # Start each sensor reading on its own thread.
     sensor_controller.startup_sensors()
 
-    log.info('Server listening on {0}:{1}'.format(host, port))
-    server = SensorControlServer(sensor_controller, time_source, position_source, orientation_source, sync_time_thresh, host, port)
+    gps_client = GPSClient((host, port), sensor_controller, time_source, position_source, orientation_source, sync_time_thresh)
 
     # This will keep running until the program is interrupted with Ctrl-C
     try:
-        server.activate()
+        gps_client.connect(sync_required)
+        gps_client.start()
     except KeyboardInterrupt:
         log.info("Keyboard interrupt detected")
         log.info("Closing all sensors")
         sensor_controller.close_sensors()
         # TODO terminate all data handlers
-    except socket.error, e:
-        log.error('Server error: {0}'.format(e))
             
-    log.info('Server shutting down.')
+    log.info('Shut down.')
     
