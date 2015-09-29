@@ -13,7 +13,6 @@ from nmea_parser import parse_nmea_sentence
 from checksum_utils import check_nmea_checksum
 
 # Default command line argument values.  Global so sensor controller can use as default host.
-default_server_host = socket.gethostname()
 default_server_port = 50005
 
 if __name__ == "__main__":
@@ -23,6 +22,7 @@ if __name__ == "__main__":
     '''
     default_rate = 10 # Hz.  Rate to read messages out of test file.
     default_gps_baud = 9600 
+    default_server_host = '0.0.0.0' # all available ip address 
     
     fix_types = { '0': 'None',
                   '1': 'GPS',

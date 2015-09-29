@@ -25,7 +25,6 @@ class GPSServer(threading.Thread):
         If received a  new client then create a new handler for it (on a separate thread)
         if we don't already have one for it.
         '''
-        
         # Set socket to be re-usable to avoid timeout after closing.
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.address))

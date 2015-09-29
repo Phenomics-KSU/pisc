@@ -14,7 +14,7 @@ from config_parsing import parse_config_file
 from sensor_creation import create_sensors
 from time_position_sources import *
 from version import current_pisc_version, current_config_version
-from gps_startup import default_server_host, default_server_port
+from gps_startup import default_server_port
 
 if __name__ == "__main__":
     '''
@@ -55,6 +55,7 @@ if __name__ == "__main__":
         
     # Default time (in milliseconds) to use for threshold when syncing time on startup.  Smaller is stricter.
     default_sync_time = 15
+    default_server_host = '127.0.0.1' # loop back
     
     # Define necessary and optional command line arguments.
     argparser = argparse.ArgumentParser(description='Uses config file to startup sensors and server.')
