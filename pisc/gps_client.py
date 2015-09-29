@@ -53,7 +53,7 @@ class GPSClient():
         timeout = 2 # seconds
         connected = False
         
-        logging.getLogger().info('Connecting to server at {}'.format(self.server_address))
+        logging.getLogger().info('Connecting to server at {}:{}'.format(self.server_address[0], self.server_address[1]))
         
         while not connected:
             connect_command = 'sync' if require_sync else 'add'

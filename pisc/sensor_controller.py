@@ -55,7 +55,7 @@ class SensorController:
                 log.info("Sensor {} already closed.".format(sensor.sensor_name))
                 continue
             
-            time_requested_to_close = sensor.time_needed_to_close()
+            time_requested_to_close = float(sensor.time_needed_to_close())
             log.info('Giving sensor {} {} seconds to close.'.format(sensor.sensor_name, time_requested_to_close))
             first_close_time = time.time()
             sensor.close()
