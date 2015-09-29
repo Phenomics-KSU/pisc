@@ -84,7 +84,7 @@ class GPSClient():
                 self.sock.settimeout(7)
                 data, handler_address = self.sock.recvfrom(1024)
             except (socket.timeout, socket.error):
-                logging.getLogger().warn('Connection to GPS server lost. Trying to reconnect.')
+                logging.getLogger().warn('No data received from GPS server. Trying to reconnect.')
                 # Don't need to sync since already have valid time reference.
                 self.connect(require_sync=False)
                 continue

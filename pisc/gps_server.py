@@ -44,8 +44,6 @@ class GPSServer(threading.Thread):
                     self.sock.sendto('ack', addr)
                 elif data =='add':
                     if not already_registered:
-                        # Ack that we've added client.
-                        self.sock.sendto('ack', addr)
                         self._create_new_handler(addr, sync=False)
                     # Tell client that its request has been received successfully.
                     self.sock.sendto('ack', addr)

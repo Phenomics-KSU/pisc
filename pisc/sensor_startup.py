@@ -18,7 +18,7 @@ from gps_startup import default_server_host, default_server_port
 
 if __name__ == "__main__":
     '''
-    Create sensors using configuration file and listens on port for incoming time/position/commands from client.
+    Create sensors using configuration file and listens on port for incoming time/position/commands from GPS server.
     '''
     # Use home directory for root output directory. This is platform independent and works well with an installed package.
     home_directory = os.path.expanduser('~')
