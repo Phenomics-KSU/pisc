@@ -3,5 +3,5 @@ version, 0.0
 # Type,      Name,                    Type Dependent Settings
 position,    position,
 orientation, orientation,
-canon_mcu,   canon_7D_C01_lc,  COM25, 57600, 1, C01
-canon_mcu,   canon_7D_C04_rc,  COM26, 57600, 1, C04
+canon_mcu,   canon_7D_C01_lc,  /dev/ttyUSB0, 57600, 1, C01
+canon_mcu,   canon_7D_C04_rc,  /dev/ttyUSB1, 57600, 1, C04
