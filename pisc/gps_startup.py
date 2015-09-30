@@ -7,6 +7,7 @@ import socket
 import serial
 import math
 import time
+import winsound
 
 from gps_server import GPSServer
 from nmea_parser import parse_nmea_sentence
@@ -14,6 +15,7 @@ from checksum_utils import check_nmea_checksum
 
 # Default command line argument values.  Global so sensor controller can use as default host.
 default_server_port = 50005
+
 
 if __name__ == "__main__":
     '''
@@ -69,6 +71,8 @@ if __name__ == "__main__":
     last_error = -1.0
     data_quality = True
     gga_count = 0 # how many gga messages have been received since last GST message.
+    beep_freq = 700 # Hz
+    beep_duration = 325 # ms
     
     # First try to open a test file that contains NMEA messages.
     nmea_source = None
@@ -147,16 +151,27 @@ if __name__ == "__main__":
                                   
                     gga_count = 0
                     
-                    if current_error > required_precision:
+                    if current_error <= required_precision:
                         
                         if current_error != last_error:
+                            
+                            print 'Required Precision of {0}m achieved. Data being logged.'.format(required_precision)
+                            last_error = current_error 
+                            
+                    if current_error > required_precision:
+                        
+                        winsound.Beep(beep_freq,beep_duration) # windows only alert noise
+                        #print '\a' # Cross platform alert noise
+                        
+                        if current_error != last_error:
+
                             print 'Current error of {}m is too large.'.format(current_error)
                             last_error = current_error                        
                                              
                         data_quality = False
                         
             if 'GGA' in parsed_sentence:
-                
+                                                            
                 gga_count += 1
                                  
                 data = parsed_sentence['GGA']
