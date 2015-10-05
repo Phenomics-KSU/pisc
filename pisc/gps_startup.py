@@ -7,7 +7,9 @@ import socket
 import serial
 import math
 import time
-import winsound
+
+if os.name == 'nt':
+    import winsound
 
 from gps_server import GPSServer
 from nmea_parser import parse_nmea_sentence
@@ -160,8 +162,10 @@ if __name__ == "__main__":
                             
                     if current_error > required_precision:
                         
-                        winsound.Beep(beep_freq,beep_duration) # windows only alert noise
-                        #print '\a' # Cross platform alert noise
+                        if os.name == 'nt':
+                            winsound.Beep(beep_freq,beep_duration)
+                        else:
+                            print '\a' # Cross platform alert noise
                         
                         if current_error != last_error:
 
