@@ -46,10 +46,7 @@ static CanonEOS            eos(&usb, &camStates);
 static byte inByte = 0; // Byte read in from serial port.
 static bool receivedTriggerCommand = false;
 static bool usbInitializedCorrectly = true;
-static bool synced_to_client = false; // becomes true when first receive sync command from client.
-static uint32_t sync_time = 0; // MCU time that the sync command was received.  In milliseconds.
 static uint32_t trigger_period = 0; // Period in milliseconds before triggering camera.  If set to 0 then periodic triggering is disabled.
-static uint32_t previous_capture_time = 0; // Time in milliseconds of the last image.  Not the one that was just taken.
 static uint32_t last_loop_end_time = 0; // Time in milliseconds that the last camera triggering loop finished at.
 static uint32_t successive_image_count = 0; // How many images have been captured without failure or time being re-synced.
 const int minimum_loop_time = 750; // Ensures no errors from over triggering.
@@ -100,16 +97,6 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
         Serial.print("dump-");
         eos.EventCheck(&hex);
         Serial.println(statusEndFrame);
-        
-        // Send back elapsed time of previous image since that's what the filename in the event dump is for.
-        // Even though shouldn't happen make sure last capture time is greater than sync time to avoid rollover right after sync.
-        uint32_t time_since_sync = 0;
-        if (previous_capture_time > sync_time)
-        {
-            time_since_sync = previous_capture_time - sync_time; 
-        }
-        printTimeMessage(time_since_sync);
-  
     }
     else // haven't taken a successful picture yet.
     {
@@ -122,20 +109,11 @@ void CamStateHandlers::OnDeviceInitializedState(PTP *ptp)
     }
     
     uint16_t ptp_return = eos.Capture();
-
-    // Need to record time after calling capture() (instead of before) since theres' a 30-60 ms delay which through testing seems to more accurately
-    // represent the time the image was captured.
-    uint32_t capture_time = millis();
     
-    // Clear any previous requests for triggering.  This allows client to send multiple requests at once to ensure one gets received.
-    //clearSerialInputBuffer(); // KLM disabled because different types of commands are being sent now.
-    
+ 
     if (ptp_return == PTP_RC_OK)
     {
         successive_image_count++;
-        
-        // Update previous capture so can use it for next time.
-        previous_capture_time = capture_time;  
     }
     else
     {
@@ -241,14 +219,7 @@ void loop()
     {
         inByte = Serial.read();
         
-        if (inByte == 's') // sync command
-        {
-            sync_time = millis();
-            synced_to_client = true;
-            successive_image_count = 0; // reset count so will wait at least one picture before sending back image name / time.
-            Serial.print('a'); // acknowledge
-        }
-        else if (inByte == 't') // trigger command
+        if (inByte == 't') // trigger command
         {
             receivedTriggerCommand = true;
         }
@@ -281,3 +252,4 @@ void loop()
     // Execute state machine
     usb.Task();
 }
+

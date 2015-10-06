@@ -11,7 +11,6 @@ class SimpleTimeSource(object):
     def __init__(self, default_time = 0):
         '''Constructor'''
         self._time = default_time
-        # Using a lock to be safe even though simple access/assignment should be atomic.
         self.lock = threading.Lock()
 
     @property
@@ -21,11 +20,10 @@ class SimpleTimeSource(object):
             current_time = self._time
         return current_time
 
-    @time.setter
-    def time(self, new_time):
+    def set_time(self, new_time, time_ref):
         '''Set new time. Thread-safe.'''
         with self.lock:
-            self._time = new_time
+            self._time = new_time + (time.time() - time_ref)
         
 class PreciseTimeSource(object):
     '''
@@ -54,16 +52,15 @@ class PreciseTimeSource(object):
                     logging.getLogger().warning('Negative time elapsed in precise time source {0}.'.format(elapsed_time))
 
         return current_time
-    
-    @time.setter
-    def time(self, new_time):
-        '''Set new time if it's later than the last set time. Thread-safe.'''
+            
+    def set_time(self, new_time, ref_time):
+        '''Set new time if it's later than the last set time. Allows a reference time (ref_time) which 
+           comes from calling time.time() to be specified which then the elapsed time since 
+           ref_time is taken into account once the lock is acquired.  Thread-safe.'''
         with self.lock:
-            if self._time != new_time:
-                # Only want to update time reference if we received an actual newer time.
+            if new_time > self._time:
                 self.last_set_time = time.time()
-                
-            self._time = new_time
+                self._time = new_time + (self.last_set_time - ref_time)
 
 class RelativePreciseTimeSource(PreciseTimeSource):
     '''
@@ -73,16 +70,8 @@ class RelativePreciseTimeSource(PreciseTimeSource):
     def time(self):
         '''Return parent's time property'''
         return super(RelativePreciseTimeSource, self).time
-    
-    @time.setter
-    def time(self, new_time):
-        '''Set new time only if hasn't been set yet. Thread-safe.'''
-        if self._time == self._default_time:
-            with self.lock:
-                self.last_set_time = time.time()
-                self._time = new_time
 
-    def set_time_with_ref(self, new_time, ref_time):
+    def set_time(self, new_time, ref_time):
         '''Set new time only if hasn't been set yet. Allows a reference time (ref_time) which 
            comes from calling time.time() to be specified which then the elapsed time since 
            ref_time is taken into account once the lock is acquired.  Thread-safe.'''

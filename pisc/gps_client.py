@@ -13,7 +13,6 @@ class GPSClient():
     UDP client that makes connection with GPS server and then handles new data.
     First call connect() and then start().
     '''
-    
     def __init__(self, server_addr, controller, time_source, position_source, orientation_source, sync_time_thresh=0.015):
         '''
         Constructor. Server address is tuple of (host, port).   Sync time thresh (in seconds) sets how close
@@ -103,7 +102,7 @@ class GPSClient():
         if packet_type == 't':
             utc_time = float(fields[1])
             time_delay = float(fields[2])
-            self.time_source.time = utc_time + time_delay
+            self.time_source.set_time(utc_time + time_delay, time.time())
             
         elif packet_type == 'p':
             utc_time = float(fields[1])
@@ -112,7 +111,7 @@ class GPSClient():
             y = float(fields[4])
             z = float(fields[5])
             zone = fields[6]
-            self.time_source.time = utc_time + time_delay
+            self.time_source.set_time(utc_time + time_delay, time.time())
             # Store reported time for position since that was the exact time it was measured.
             self.position_source.position = (utc_time, (x, y, z), zone)
             
@@ -122,7 +121,7 @@ class GPSClient():
             roll = float(fields[3])
             pitch = float(fields[4])
             yaw = float(fields[5])
-            self.time_source.time = utc_time + time_delay
+            self.time_source.set_time(utc_time + time_delay, time.time())
             # Store reported time for orientation since that was the exact time it was measured.
             self.orientation_source.orientation = (utc_time, (roll, pitch, yaw))
             
@@ -163,17 +162,13 @@ class GPSClient():
                     sync_successful = max_offset < self.sync_time_thresh
                     
                     if sync_successful:
-                        try:
-                            self.time_source.set_time_with_ref(avg_time, current_time)
-                        except AttributeError:
-                            # Fall back on setting time property.
-                            self.time_source.time = avg_time
+                        self.time_source.set_time(avg_time, current_time)
                         # log sync stats
                         latencies = [m['latency'] for m in self.sync_messages]
-                        logging.getLogger().info('Success\nLatency {} / {} thresh {} / {}'.format(int(mean(latencies)*1000),
-                                                                                                  int(max(latencies)*1000),
-                                                                                                  int(max_offset*1000),
-                                                                                                  int(self.sync_time_thresh*1000)))
+                        logging.getLogger().info('Success\nLatency {} / {} thresh {} / {}'.format(int(mean(latencies)*1000000),
+                                                                                                  int(max(latencies)*1000000),
+                                                                                                  int(max_offset*1000000),
+                                                                                                  int(self.sync_time_thresh*1000000)))
                     else:
                         self.sync_messages = []
                         # Print additional period to show that it's still trying to sync

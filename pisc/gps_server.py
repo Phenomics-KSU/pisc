@@ -22,7 +22,7 @@ class GPSServer(threading.Thread):
     def run(self):
         '''
         Thread start method. Bind socket, then wait for new clients to connect.  
-        If received a  new client then create a new handler for it (on a separate thread)
+        If received a new client then create a new handler for it (on a separate thread)
         if we don't already have one for it.
         '''
         # Set socket to be re-usable to avoid timeout after closing.

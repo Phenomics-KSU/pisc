@@ -44,7 +44,7 @@ if __name__ == "__main__":
     handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s'))
     log.addHandler(handler)
  
-    log.info('PISC Version {0}'.format(current_pisc_version))
+    log.info('PISC Version {}'.format(current_pisc_version))
     
     # Time is treated as a double-precision floating point number which should always be true.
     # If for some reason it's not then notify a user that all times will be incorrect.
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         sys.exit(1)
         
     # Default time (in milliseconds) to use for threshold when syncing time on startup.  Smaller is stricter.
-    default_sync_time = 15
+    default_sync_time = -1
     default_server_host = '127.0.0.1' # loop back
     
     # Define necessary and optional command line arguments.
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         log.error('No sensor information found in configuration file.')
         sys.exit(1)
         
-    time_source = RelativePreciseTimeSource()
+    time_source = PreciseTimeSource()
     position_source = SimplePositionSource()
     orientation_source = SimpleOrientationSource()
     

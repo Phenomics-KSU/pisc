@@ -31,18 +31,9 @@ class CanonMCU(Sensor):
         self.stop_triggering = False # If true then will stop taking pictures.
         self.connection = None
         
-        # Command to send to MCU to sync camera time. 
-        self.sync_command = '\x73' # ascii s
-        
         # Command to send to MCU to trigger camera. 
         self.trigger_command = '\x74' # ascii t
-        
-        # Acknowledgment command
-        self.sync_ack_command = '\x61' # ascii a
-        
-        # UTC timestamp that all MCU reported image times are relative to.
-        self.synced_utc_time = 0
-        
+
         # Last image filename received by camera.  
         self.last_image_filename = None
         
@@ -93,9 +84,6 @@ class CanonMCU(Sensor):
             time.sleep(0.25)
             current_time = self.time_source.time
         
-        # Create mapping between our time source and relative MCU time source so we can tag images with times.
-        self.sync_mcu_time()
-            
         # Tell camera how often we want to take pictures. Convert to an integer in milliseconds because that's what MCU is expecting.
         self.change_trigger_period(int(self.trigger_period * 1000))
         
@@ -140,34 +128,6 @@ class CanonMCU(Sensor):
         self.received_close_request = False
         self.actually_close()
         
-    def sync_mcu_time(self):
-        '''
-         Synchronize camera MCU to utc time.  This won't start taking pictures, but will tell the camera MCU
-         to report all future image times relative to when it receives this 'sync' command.  
-         This is better than have this driver send trigger commands since there's no guarantee this code
-         can run at a constant rate since the OS isn't real-time.
-         
-         Notes: Time source must have a valid non-zero time before calling this method.
-        '''        
-        sync_max_time = 0.020 # max number of seconds that can elapse during sync process.
-        sync_successful = False
-        logging.getLogger().warn("Syncing to {}".format(self.sensor_name))
-        while not sync_successful:
-            # Grab current UTC time so we can use relative MCU times when images come back.
-            self.synced_utc_time = self.time_source.time
-            sync_successful = self.send_command(self.sync_command, command_description='sync', expected_ack = self.sync_ack_command, ack_timeout = 1)
-            
-            if sync_successful:
-                elapsed_time_since_sync = self.time_source.time - self.synced_utc_time
-      
-                if elapsed_time_since_sync > sync_max_time:
-                    #logging.getLogger().warn("{} seconds elapsed during sync to {} which is higher than the max of {}. Retrying.".format(elapsed_time_since_sync, self.sensor_name, sync_max_time))
-                    sync_successful = False # try to re-sync
-                else:
-                    # Add on half of the sync duration to account for latency due to syncing to MCU.
-                    self.synced_utc_time += elapsed_time_since_sync / 2.0
-                    #logging.getLogger().warn("Synced to {} in {} ms.".format(self.sensor_name, elapsed_time_since_sync * 1000 / 2.0))
-            
     def change_trigger_period(self, new_trigger_period):
         '''Change how often camera is taking pictures.  Should be in milliseconds.  Set to zero to stop taking images.'''
         change_successful = False
@@ -249,6 +209,11 @@ class CanonMCU(Sensor):
                 if filename is not None and len(filename) > 0:
                     #print 'Parsed from dump: ' + filename
                     self.last_image_filename = filename
+                    # Add on 30 ms to account for capture/transmission delay.
+                    # This was determined experimentally over many runs.
+                    image_time = self.time_source.time + 0.03;
+                    new_images.append((image_time, filename))
+                    self.image_count += 1;
                 else:
                     #print 'failed to parse filename from dump'
                     self.failed_image_name_parse_count += 1
@@ -259,21 +224,6 @@ class CanonMCU(Sensor):
                     elif self.failed_image_name_parse_count > 3:
                         # Check how many we've failed to parse.  If it's too many than the user problem specified the wrong camera prefix.
                         logging.getLogger().error('Failed to parse filename from camera {} multiple times.  Is specified image prefix {} correct?'.format(self.sensor_name, self.image_filename_prefix))
-            elif message_type == 'time':
-                try:
-                    relative_time = float(contents) / 1000.0 # convert from milliseconds to seconds
-                except ValueError:
-                    logging.getLogger().error('Camera {} MCU time could not be converted to a float.'.format(self.sensor_name))
-                    continue # invalid time
-                #print 'Relative time ' + str(relative_time)
-                utc_time = self.synced_utc_time + relative_time  
-                #print 'UTC time ' + str(utc_time)
-                #print 'Goes with ' + str(self.last_image_filename)
-                if self.last_image_filename is not None:
-                    new_images.append((utc_time, self.last_image_filename))
-                    # just used filename so reset it so it doesn't get used twice if next parse fails.
-                    self.last_image_filename = None
-                    self.image_count += 1
 
         return new_images
     
@@ -334,15 +284,21 @@ class CanonMCU(Sensor):
         # Extract image number and extension
         image_number = image_name[image_number_index + 1 : image_number_index + 5]
         
-        image_extension =  image_name[-3:]
-        
         try:
             image_number = int(image_number)
         except ValueError:
-            return "" # Image number not valid so can't produce valid image name
+            return "" # Invalid image number
         
+        # The image name we're receiving is for the last image.. but we should be receiving
+        # it the same time the current image is taken so increment image number.
+        image_number += 1
+        if image_number >= 10000:
+            image_number = 1
+        
+        image_extension =  image_name[-3:]
+   
         # Combine back into correct file name.
-        #image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)
+        image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)
         
         return image_name
 
