@@ -298,7 +298,7 @@ class CanonMCU(Sensor):
         image_extension =  image_name[-3:]
    
         # Combine back into correct file name.
-        image_name = "{0}_{1}.{2}".format(actual_image_prefix, image_number, image_extension)
+        image_name = "{0}_{1:04d}.{2}".format(actual_image_prefix, image_number, image_extension)
         
         return image_name
 
