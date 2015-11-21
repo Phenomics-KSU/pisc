@@ -154,14 +154,14 @@ class ClientHandler(threading.Thread):
     def send_command_by_name(self, sensor_name, command):
         '''
         Queue up command to be sent to client.
-        Will send to all sensors with matching name (names aren't unique)
+        Will send to sensor with matching name.
         '''
         self.queue.put(['cn', sensor_name, command])
         
     def send_command_by_id(self, sensor_id, command):
         '''
         Queue up command to be sent to client.
-        Will send to all sensors with matching ID. All ID's are unique for a given run.
+        Will send to sensor with matching ID.
         '''
         self.queue.put(['ci', sensor_id, command])
                     

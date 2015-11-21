@@ -18,7 +18,7 @@ class Sensor:
         return self.sensor_type
     
     def get_name(self):
-        '''Return sensor name. Not unique.'''
+        '''Return unique sensor name.'''
         return self.sensor_name
     
     def get_id(self):

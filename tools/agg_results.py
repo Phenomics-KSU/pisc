@@ -59,8 +59,8 @@ if __name__ == '__main__':
         
         with open(output_filepath, 'w') as out_file:
             for filepath in filepaths:
-                with open(filepath, 'r') as file:
-                    for line in file:
+                with open(filepath, 'r') as pisc_file:
+                    for line in pisc_file:
                         out_file.write(line)
                         
         #print "Combined files to {}".format(output_filename)
